@@ -71,8 +71,9 @@ export default function Footer() {
             <div className="text-sm text-muted-foreground space-y-1">
               <p><strong>Founder & President:</strong> Ch. Sukhvinder Bains</p>
               <p><strong>Director:</strong> Ch. Komal</p>
-              <p><strong>Reg. No:</strong> 01215</p>
+              <p><strong>Reg. No:</strong> HR/01/2024/01215</p>
               <p><strong>DARPAN ID:</strong> HR/2025/0866027</p>
+              <p><strong>Registered:</strong> Haryana Societies Act, 2012</p>
             </div>
             {/* Social Links */}
             <div className="flex items-center gap-4">
@@ -140,10 +141,17 @@ export default function Footer() {
             <ul className="space-y-4">
               <li className="flex items-start gap-3">
                 <MapPin className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
-                <span className="text-muted-foreground text-sm">
-                  Shop No. 5, First Floor, Near New Bus Stand,<br />
-                  Bhuna, Fatehabad, Haryana 125111
-                </span>
+                <a 
+                  href="https://www.google.com/maps/search/?api=1&query=Laxmi+Mata+Mandir+Wali+Gali+Uklana+Road+Shastri+Mandi+Bhuna+Haryana+125111"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-muted-foreground text-sm hover:text-primary"
+                >
+                  Laxmi Mata Mandir Wali Gali,<br />
+                  Uklana Road, Shastri Mandi,<br />
+                  Bhuna, District Fatehabad,<br />
+                  Haryana - 125111, India
+                </a>
               </li>
               <li className="flex items-center gap-3">
                 <Phone className="h-5 w-5 text-primary flex-shrink-0" />

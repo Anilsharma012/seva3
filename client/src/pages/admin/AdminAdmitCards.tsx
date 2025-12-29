@@ -228,9 +228,11 @@ export default function AdminAdmitCards() {
 </head>
 <body>
   <div class="header">
-    <div class="title">Manav Welfare Seva Society</div>
+    <div class="title">MANAV WELFARE SEWA SOCIETY, BHUNA</div>
     <div class="subtitle">मानव वेलफेयर सेवा सोसायटी, भुना (हरियाणा)</div>
-    <div class="subtitle">Reg. No: 01215 | Phone: +91 98126 76818</div>
+    <div class="subtitle">Reg. No: HR/01/2024/01215 | DARPAN ID: HR/2025/0866027</div>
+    <div class="subtitle">Laxmi Mata Mandir Wali Gali, Uklana Road, Shastri Mandi, Bhuna, Fatehabad - 125111</div>
+    <div class="subtitle">Phone: +91 98126 76818</div>
   </div>
   
   <div class="admit-title">ADMIT CARD / प्रवेश पत्र</div>
@@ -255,13 +257,41 @@ export default function AdminAdmitCards() {
   </div>
   
   <div class="instructions">
-    <h3>Instructions / निर्देश:</h3>
-    <ul>
-      <li>Bring this admit card to the examination center / इस प्रवेश पत्र को परीक्षा केंद्र पर लाएं</li>
-      <li>Bring a valid photo ID / वैध फोटो आईडी साथ लाएं</li>
-      <li>Arrive 30 minutes before exam time / परीक्षा समय से 30 मिनट पहले पहुंचें</li>
-      <li>Electronic devices are not allowed / इलेक्ट्रॉनिक उपकरणों की अनुमति नहीं है</li>
-    </ul>
+    <h3>Terms & Conditions / नियम एवं शर्तें:</h3>
+    <table style="width:100%; border-collapse: collapse; font-size: 12px;">
+      <tr>
+        <td style="width:50%; vertical-align:top; padding-right:10px;">
+          <strong>English:</strong>
+          <ol style="margin:5px 0; padding-left:20px;">
+            <li>Bring this admit card to the examination center.</li>
+            <li>Carry a valid photo ID (Aadhar Card/School ID) for verification.</li>
+            <li>Arrive at least 30 minutes before the scheduled exam time.</li>
+            <li>Mobile phones and electronic devices are strictly prohibited.</li>
+            <li>Any malpractice will lead to immediate disqualification.</li>
+            <li>Students must follow all instructions given by the invigilator.</li>
+            <li>Late entry after 15 minutes of exam start will not be allowed.</li>
+            <li>This admit card is non-transferable.</li>
+            <li>The organization reserves the right to cancel the exam if necessary.</li>
+            <li>Results will be declared as per the schedule announced by MWSS.</li>
+          </ol>
+        </td>
+        <td style="width:50%; vertical-align:top; padding-left:10px; border-left: 1px solid #ddd;">
+          <strong>हिंदी:</strong>
+          <ol style="margin:5px 0; padding-left:20px;">
+            <li>इस प्रवेश पत्र को परीक्षा केंद्र पर अवश्य लाएं।</li>
+            <li>पहचान हेतु वैध फोटो आईडी (आधार कार्ड/स्कूल आईडी) साथ लाएं।</li>
+            <li>निर्धारित परीक्षा समय से कम से कम 30 मिनट पहले पहुंचें।</li>
+            <li>मोबाइल फोन और इलेक्ट्रॉनिक उपकरण सख्त वर्जित हैं।</li>
+            <li>किसी भी प्रकार की नकल करने पर तुरंत अयोग्य घोषित किया जाएगा।</li>
+            <li>छात्रों को निरीक्षक द्वारा दिए गए सभी निर्देशों का पालन करना होगा।</li>
+            <li>परीक्षा शुरू होने के 15 मिनट बाद प्रवेश की अनुमति नहीं होगी।</li>
+            <li>यह प्रवेश पत्र हस्तांतरणीय नहीं है।</li>
+            <li>संस्था को आवश्यकता पड़ने पर परीक्षा रद्द करने का अधिकार है।</li>
+            <li>परिणाम MWSS द्वारा घोषित कार्यक्रम के अनुसार जारी किए जाएंगे।</li>
+          </ol>
+        </td>
+      </tr>
+    </table>
   </div>
   
   <div class="signature">
@@ -271,8 +301,8 @@ export default function AdminAdmitCards() {
   </div>
   
   <div class="footer">
-    <p>This is a computer generated admit card</p>
-    <p>यह कंप्यूटर जनित प्रवेश पत्र है</p>
+    <p>This is a computer generated admit card / यह कंप्यूटर जनित प्रवेश पत्र है</p>
+    <p style="margin-top:5px; font-size:11px;">MANAV WELFARE SEWA SOCIETY, BHUNA | Reg: HR/01/2024/01215 | DARPAN: HR/2025/0866027</p>
   </div>
 </body>
 </html>`;
