@@ -8,6 +8,14 @@ This is a full-stack education management system for Manav Welfare Seva Society,
 - **Demo Student Login**: student@mwss.org / Student@123
 
 ## Recent Changes
+- **December 29, 2024**: Enhanced volunteer and payment management system
+  - Added volunteer_accounts table with login/password support and approval workflow
+  - Added payment_transactions table to track all donations, fees, and memberships with admin approval
+  - Added team_members table for managing team/staff profiles (bilingual)
+  - Added services table for managing NGO services (bilingual)
+  - Volunteer registration with password, admin approval before full access
+  - Payment transaction approval workflow - payments pending until admin approves
+  - Extended authentication to support volunteer role (admin, student, volunteer)
 - **December 29, 2024**: Migrated from MongoDB to PostgreSQL with Drizzle ORM
   - Replaced Mongoose schemas with Drizzle PostgreSQL schemas in shared/schema.ts
   - Implemented storage interface layer in server/storage.ts for database abstraction
@@ -15,7 +23,7 @@ This is a full-stack education management system for Manav Welfare Seva Society,
   - Removed MongoDB models folder and Supabase code
   - Database seeding updated to use PostgreSQL storage interface
 - **December 2024**: Previous MongoDB Atlas implementation
-- JWT-based authentication with role-based access control
+- JWT-based authentication with role-based access control (admin, student, volunteer)
 - Database-driven admin sidebar menu (MenuItem schema)
 - Configurable admin settings/feature toggles (AdminSetting schema)
 - Payment Configuration management (QR codes, UPI IDs, bank details)
@@ -144,6 +152,33 @@ shared/
 - `POST /api/admin/students/:id/payment` - Record fee payment
 - `GET /api/admin/fee-records` - Export fee payment records
 
+### Volunteer Accounts
+- `POST /api/auth/volunteer/register` - Volunteer registration with password
+- `POST /api/auth/volunteer/login` - Volunteer login
+- `GET /api/admin/volunteer-accounts` - Get all volunteer accounts (Admin only)
+- `PATCH /api/admin/volunteer-accounts/:id` - Approve/update volunteer (Admin only)
+
+### Payment Transactions (Approval Workflow)
+- `POST /api/public/payment-transaction` - Submit payment (Public)
+- `GET /api/admin/payment-transactions` - Get all transactions (Admin only)
+- `GET /api/admin/payment-transactions/pending` - Get pending transactions (Admin only)
+- `PATCH /api/admin/payment-transactions/:id` - Approve/reject transaction (Admin only)
+- `GET /api/public/payment-transaction/check/:transactionId` - Check transaction status (Public)
+
+### Team Members (Bilingual)
+- `GET /api/admin/team-members` - Get all team members (Admin only)
+- `GET /api/public/team-members` - Get active team members (Public)
+- `POST /api/admin/team-members` - Create team member (Admin only)
+- `PATCH /api/admin/team-members/:id` - Update team member (Admin only)
+- `DELETE /api/admin/team-members/:id` - Delete team member (Admin only)
+
+### Services (Bilingual)
+- `GET /api/admin/services` - Get all services (Admin only)
+- `GET /api/public/services` - Get active services (Public)
+- `POST /api/admin/services` - Create service (Admin only)
+- `PATCH /api/admin/services/:id` - Update service (Admin only)
+- `DELETE /api/admin/services/:id` - Delete service (Admin only)
+
 ## Database Schema (PostgreSQL with Drizzle)
 
 ### students
@@ -205,6 +240,28 @@ shared/
 ### contact_inquiries
 - id (serial), name, email, phone, subject, message
 - status (pending, responded, closed)
+
+### volunteer_accounts
+- id (serial), email (unique), password (hashed), fullName, phone
+- address, city, photoUrl, occupation, skills, availability
+- isActive, isApproved, approvedBy (ref admins), approvedAt
+
+### payment_transactions
+- id (serial), type (donation, fee, membership)
+- name, email, phone, amount, transactionId, paymentMethod, purpose
+- status (pending, approved, rejected)
+- membershipId (ref), studentId (ref)
+- photoUrl, fatherName, address, city, state, pincode, membershipLevel
+- adminNotes, approvedBy (ref admins), approvedAt
+
+### team_members (Bilingual)
+- id (serial), name, nameHindi, designation, designationHindi
+- photoUrl, phone, email, bio, bioHindi
+- socialLinks (jsonb), order, isActive
+
+### services (Bilingual)
+- id (serial), name, nameHindi, description, descriptionHindi
+- iconKey, imageUrl, order, isActive
 
 ## Fee Levels
 - Village Level: Rs.99

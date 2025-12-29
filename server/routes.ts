@@ -119,6 +119,11 @@ export async function registerRoutes(app: Express): Promise<void> {
         if (!admin) return res.status(404).json({ error: "Admin not found" });
         const { password, ...adminData } = admin;
         res.json({ ...adminData, role: "admin" });
+      } else if (req.user?.role === "volunteer") {
+        const volunteer = await storage.getVolunteerAccountById(parseInt(req.user.id));
+        if (!volunteer) return res.status(404).json({ error: "Volunteer not found" });
+        const { password, ...volunteerData } = volunteer;
+        res.json({ ...volunteerData, role: "volunteer" });
       } else {
         const student = await storage.getStudentById(parseInt(req.user?.id || "0"));
         if (!student) return res.status(404).json({ error: "Student not found" });
@@ -806,6 +811,272 @@ export async function registerRoutes(app: Express): Promise<void> {
       res.json(feeRecords);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch fee records" });
+    }
+  });
+
+  app.post("/api/auth/volunteer/register", async (req, res) => {
+    try {
+      const { email, password, confirmPassword, fullName, phone, address, city, occupation, skills, availability, photoUrl } = req.body;
+      
+      if (password !== confirmPassword) {
+        return res.status(400).json({ error: "Passwords do not match" });
+      }
+      
+      const existing = await storage.getVolunteerAccountByEmail(email);
+      if (existing) {
+        return res.status(400).json({ error: "Email already registered" });
+      }
+      
+      const hashedPassword = await bcrypt.hash(password, 10);
+      const volunteer = await storage.createVolunteerAccount({
+        email,
+        password: hashedPassword,
+        fullName,
+        phone,
+        address,
+        city,
+        occupation,
+        skills,
+        availability,
+        photoUrl,
+      });
+      
+      const token = generateToken({ id: volunteer.id.toString(), email: volunteer.email, role: "volunteer", name: volunteer.fullName });
+      res.status(201).json({ 
+        success: true, 
+        message: "Registration successful! Your account is pending admin approval.",
+        token,
+        user: { id: volunteer.id, email: volunteer.email, role: "volunteer", name: volunteer.fullName, isApproved: volunteer.isApproved }
+      });
+    } catch (error) {
+      console.error("Volunteer registration error:", error);
+      res.status(500).json({ error: "Registration failed" });
+    }
+  });
+
+  app.post("/api/auth/volunteer/login", async (req, res) => {
+    try {
+      const { email, password } = req.body;
+      const volunteer = await storage.getVolunteerAccountByEmail(email);
+      
+      if (!volunteer) {
+        return res.status(401).json({ error: "Invalid credentials" });
+      }
+      
+      if (!volunteer.isActive) {
+        return res.status(403).json({ error: "Account is deactivated" });
+      }
+      
+      const isValid = await bcrypt.compare(password, volunteer.password);
+      if (!isValid) {
+        return res.status(401).json({ error: "Invalid credentials" });
+      }
+      
+      const token = generateToken({ id: volunteer.id.toString(), email: volunteer.email, role: "volunteer", name: volunteer.fullName });
+      res.json({ 
+        token, 
+        user: { id: volunteer.id, email: volunteer.email, role: "volunteer", name: volunteer.fullName, isApproved: volunteer.isApproved }
+      });
+    } catch (error) {
+      res.status(500).json({ error: "Login failed" });
+    }
+  });
+
+  app.get("/api/admin/volunteer-accounts", authMiddleware, adminOnly, async (req: AuthRequest, res) => {
+    try {
+      const accounts = await storage.getAllVolunteerAccounts();
+      res.json(accounts.map(({ password, ...a }) => a));
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch volunteer accounts" });
+    }
+  });
+
+  app.patch("/api/admin/volunteer-accounts/:id", authMiddleware, adminOnly, async (req: AuthRequest, res) => {
+    try {
+      const updates: any = { ...req.body };
+      if (req.body.isApproved === true && req.user?.id) {
+        updates.approvedBy = parseInt(req.user.id);
+        updates.approvedAt = new Date();
+      }
+      const account = await storage.updateVolunteerAccount(parseInt(req.params.id), updates);
+      if (!account) return res.status(404).json({ error: "Volunteer account not found" });
+      const { password, ...accountData } = account;
+      res.json(accountData);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update volunteer account" });
+    }
+  });
+
+  app.post("/api/public/payment-transaction", async (req, res) => {
+    try {
+      const { type, name, email, phone, amount, transactionId, paymentMethod, purpose, fatherName, address, city, state, pincode, membershipLevel, photoUrl } = req.body;
+      
+      const existingTransaction = await storage.getPaymentTransactionByTransactionId(transactionId);
+      if (existingTransaction) {
+        return res.status(400).json({ error: "Transaction ID already exists" });
+      }
+      
+      const transaction = await storage.createPaymentTransaction({
+        type,
+        name,
+        email,
+        phone,
+        amount,
+        transactionId,
+        paymentMethod,
+        purpose,
+        fatherName,
+        address,
+        city,
+        state,
+        pincode,
+        membershipLevel,
+        photoUrl,
+      });
+      
+      res.status(201).json({ 
+        success: true, 
+        message: "Payment submitted successfully! Please wait for admin approval.",
+        transaction: { id: transaction.id, status: transaction.status }
+      });
+    } catch (error) {
+      console.error("Payment transaction error:", error);
+      res.status(500).json({ error: "Failed to submit payment" });
+    }
+  });
+
+  app.get("/api/admin/payment-transactions", authMiddleware, adminOnly, async (req: AuthRequest, res) => {
+    try {
+      const transactions = await storage.getAllPaymentTransactions();
+      res.json(transactions);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch transactions" });
+    }
+  });
+
+  app.get("/api/admin/payment-transactions/pending", authMiddleware, adminOnly, async (req: AuthRequest, res) => {
+    try {
+      const transactions = await storage.getPendingPaymentTransactions();
+      res.json(transactions);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch pending transactions" });
+    }
+  });
+
+  app.patch("/api/admin/payment-transactions/:id", authMiddleware, adminOnly, async (req: AuthRequest, res) => {
+    try {
+      const updates: any = { ...req.body };
+      if (req.body.status === "approved" && req.user?.id) {
+        updates.approvedBy = parseInt(req.user.id);
+        updates.approvedAt = new Date();
+      }
+      const transaction = await storage.updatePaymentTransaction(parseInt(req.params.id), updates);
+      if (!transaction) return res.status(404).json({ error: "Transaction not found" });
+      res.json(transaction);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update transaction" });
+    }
+  });
+
+  app.get("/api/admin/team-members", authMiddleware, adminOnly, async (req: AuthRequest, res) => {
+    try {
+      const members = await storage.getAllTeamMembers();
+      res.json(members);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch team members" });
+    }
+  });
+
+  app.get("/api/public/team-members", async (req, res) => {
+    try {
+      const members = await storage.getActiveTeamMembers();
+      res.json(members);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch team members" });
+    }
+  });
+
+  app.post("/api/admin/team-members", authMiddleware, adminOnly, async (req: AuthRequest, res) => {
+    try {
+      const member = await storage.createTeamMember(req.body);
+      res.status(201).json(member);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create team member" });
+    }
+  });
+
+  app.patch("/api/admin/team-members/:id", authMiddleware, adminOnly, async (req: AuthRequest, res) => {
+    try {
+      const member = await storage.updateTeamMember(parseInt(req.params.id), req.body);
+      if (!member) return res.status(404).json({ error: "Team member not found" });
+      res.json(member);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update team member" });
+    }
+  });
+
+  app.delete("/api/admin/team-members/:id", authMiddleware, adminOnly, async (req: AuthRequest, res) => {
+    try {
+      await storage.deleteTeamMember(parseInt(req.params.id));
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete team member" });
+    }
+  });
+
+  app.get("/api/admin/services", authMiddleware, adminOnly, async (req: AuthRequest, res) => {
+    try {
+      const services = await storage.getAllServices();
+      res.json(services);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch services" });
+    }
+  });
+
+  app.get("/api/public/services", async (req, res) => {
+    try {
+      const services = await storage.getActiveServices();
+      res.json(services);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch services" });
+    }
+  });
+
+  app.post("/api/admin/services", authMiddleware, adminOnly, async (req: AuthRequest, res) => {
+    try {
+      const service = await storage.createService(req.body);
+      res.status(201).json(service);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create service" });
+    }
+  });
+
+  app.patch("/api/admin/services/:id", authMiddleware, adminOnly, async (req: AuthRequest, res) => {
+    try {
+      const service = await storage.updateService(parseInt(req.params.id), req.body);
+      if (!service) return res.status(404).json({ error: "Service not found" });
+      res.json(service);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update service" });
+    }
+  });
+
+  app.delete("/api/admin/services/:id", authMiddleware, adminOnly, async (req: AuthRequest, res) => {
+    try {
+      await storage.deleteService(parseInt(req.params.id));
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete service" });
+    }
+  });
+
+  app.get("/api/public/payment-transaction/check/:transactionId", async (req, res) => {
+    try {
+      const transaction = await storage.getPaymentTransactionByTransactionId(req.params.transactionId);
+      if (!transaction) return res.status(404).json({ error: "Transaction not found" });
+      res.json({ status: transaction.status, type: transaction.type, amount: transaction.amount });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to check transaction" });
     }
   });
 }

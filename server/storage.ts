@@ -4,11 +4,14 @@ import {
   admins, students, results, admitCards, memberships, menuItems,
   adminSettings, paymentConfigs, contentSections, volunteerApplications,
   feeStructures, membershipCards, pages, contactInquiries,
+  volunteerAccounts, paymentTransactions, teamMembers, services,
   InsertAdmin, InsertStudent, InsertResult, InsertAdmitCard, InsertMembership,
   InsertMenuItem, InsertAdminSetting, InsertPaymentConfig, InsertContentSection,
   InsertVolunteerApplication, InsertFeeStructure, InsertMembershipCard, InsertPage, InsertContactInquiry,
+  InsertVolunteerAccount, InsertPaymentTransaction, InsertTeamMember, InsertService,
   Admin, Student, Result, AdmitCard, Membership, MenuItem, AdminSetting, PaymentConfig,
-  ContentSection, VolunteerApplication, FeeStructure, MembershipCard, Page, ContactInquiry
+  ContentSection, VolunteerApplication, FeeStructure, MembershipCard, Page, ContactInquiry,
+  VolunteerAccount, PaymentTransaction, TeamMember, Service
 } from "@shared/schema";
 
 export interface IStorage {
@@ -88,6 +91,32 @@ export interface IStorage {
   createContactInquiry(data: InsertContactInquiry): Promise<ContactInquiry>;
   getAllContactInquiries(): Promise<ContactInquiry[]>;
   updateContactInquiry(id: number, data: Partial<InsertContactInquiry>): Promise<ContactInquiry | undefined>;
+
+  createVolunteerAccount(data: InsertVolunteerAccount): Promise<VolunteerAccount>;
+  getVolunteerAccountByEmail(email: string): Promise<VolunteerAccount | undefined>;
+  getVolunteerAccountById(id: number): Promise<VolunteerAccount | undefined>;
+  getAllVolunteerAccounts(): Promise<VolunteerAccount[]>;
+  updateVolunteerAccount(id: number, data: Partial<InsertVolunteerAccount>): Promise<VolunteerAccount | undefined>;
+
+  createPaymentTransaction(data: InsertPaymentTransaction): Promise<PaymentTransaction>;
+  getPaymentTransactionById(id: number): Promise<PaymentTransaction | undefined>;
+  getPaymentTransactionByTransactionId(transactionId: string): Promise<PaymentTransaction | undefined>;
+  getAllPaymentTransactions(): Promise<PaymentTransaction[]>;
+  getPaymentTransactionsByType(type: string): Promise<PaymentTransaction[]>;
+  getPendingPaymentTransactions(): Promise<PaymentTransaction[]>;
+  updatePaymentTransaction(id: number, data: Partial<InsertPaymentTransaction>): Promise<PaymentTransaction | undefined>;
+
+  createTeamMember(data: InsertTeamMember): Promise<TeamMember>;
+  getAllTeamMembers(): Promise<TeamMember[]>;
+  getActiveTeamMembers(): Promise<TeamMember[]>;
+  updateTeamMember(id: number, data: Partial<InsertTeamMember>): Promise<TeamMember | undefined>;
+  deleteTeamMember(id: number): Promise<void>;
+
+  createService(data: InsertService): Promise<Service>;
+  getAllServices(): Promise<Service[]>;
+  getActiveServices(): Promise<Service[]>;
+  updateService(id: number, data: Partial<InsertService>): Promise<Service | undefined>;
+  deleteService(id: number): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -389,6 +418,114 @@ export class DatabaseStorage implements IStorage {
   async updateContactInquiry(id: number, data: Partial<InsertContactInquiry>): Promise<ContactInquiry | undefined> {
     const [inquiry] = await db.update(contactInquiries).set({ ...data, updatedAt: new Date() }).where(eq(contactInquiries.id, id)).returning();
     return inquiry;
+  }
+
+  async createVolunteerAccount(data: InsertVolunteerAccount): Promise<VolunteerAccount> {
+    const [account] = await db.insert(volunteerAccounts).values(data).returning();
+    return account;
+  }
+
+  async getVolunteerAccountByEmail(email: string): Promise<VolunteerAccount | undefined> {
+    return await db.query.volunteerAccounts.findFirst({ where: eq(volunteerAccounts.email, email) });
+  }
+
+  async getVolunteerAccountById(id: number): Promise<VolunteerAccount | undefined> {
+    return await db.query.volunteerAccounts.findFirst({ where: eq(volunteerAccounts.id, id) });
+  }
+
+  async getAllVolunteerAccounts(): Promise<VolunteerAccount[]> {
+    return await db.query.volunteerAccounts.findMany({ orderBy: [desc(volunteerAccounts.createdAt)] });
+  }
+
+  async updateVolunteerAccount(id: number, data: Partial<InsertVolunteerAccount>): Promise<VolunteerAccount | undefined> {
+    const [account] = await db.update(volunteerAccounts).set({ ...data, updatedAt: new Date() }).where(eq(volunteerAccounts.id, id)).returning();
+    return account;
+  }
+
+  async createPaymentTransaction(data: InsertPaymentTransaction): Promise<PaymentTransaction> {
+    const [transaction] = await db.insert(paymentTransactions).values(data).returning();
+    return transaction;
+  }
+
+  async getPaymentTransactionById(id: number): Promise<PaymentTransaction | undefined> {
+    return await db.query.paymentTransactions.findFirst({ where: eq(paymentTransactions.id, id) });
+  }
+
+  async getPaymentTransactionByTransactionId(transactionId: string): Promise<PaymentTransaction | undefined> {
+    return await db.query.paymentTransactions.findFirst({ where: eq(paymentTransactions.transactionId, transactionId) });
+  }
+
+  async getAllPaymentTransactions(): Promise<PaymentTransaction[]> {
+    return await db.query.paymentTransactions.findMany({ orderBy: [desc(paymentTransactions.createdAt)] });
+  }
+
+  async getPaymentTransactionsByType(type: string): Promise<PaymentTransaction[]> {
+    return await db.query.paymentTransactions.findMany({
+      where: eq(paymentTransactions.type, type as any),
+      orderBy: [desc(paymentTransactions.createdAt)]
+    });
+  }
+
+  async getPendingPaymentTransactions(): Promise<PaymentTransaction[]> {
+    return await db.query.paymentTransactions.findMany({
+      where: eq(paymentTransactions.status, "pending"),
+      orderBy: [desc(paymentTransactions.createdAt)]
+    });
+  }
+
+  async updatePaymentTransaction(id: number, data: Partial<InsertPaymentTransaction>): Promise<PaymentTransaction | undefined> {
+    const [transaction] = await db.update(paymentTransactions).set({ ...data, updatedAt: new Date() }).where(eq(paymentTransactions.id, id)).returning();
+    return transaction;
+  }
+
+  async createTeamMember(data: InsertTeamMember): Promise<TeamMember> {
+    const [member] = await db.insert(teamMembers).values(data).returning();
+    return member;
+  }
+
+  async getAllTeamMembers(): Promise<TeamMember[]> {
+    return await db.query.teamMembers.findMany({ orderBy: [teamMembers.order] });
+  }
+
+  async getActiveTeamMembers(): Promise<TeamMember[]> {
+    return await db.query.teamMembers.findMany({
+      where: eq(teamMembers.isActive, true),
+      orderBy: [teamMembers.order]
+    });
+  }
+
+  async updateTeamMember(id: number, data: Partial<InsertTeamMember>): Promise<TeamMember | undefined> {
+    const [member] = await db.update(teamMembers).set({ ...data, updatedAt: new Date() }).where(eq(teamMembers.id, id)).returning();
+    return member;
+  }
+
+  async deleteTeamMember(id: number): Promise<void> {
+    await db.delete(teamMembers).where(eq(teamMembers.id, id));
+  }
+
+  async createService(data: InsertService): Promise<Service> {
+    const [service] = await db.insert(services).values(data).returning();
+    return service;
+  }
+
+  async getAllServices(): Promise<Service[]> {
+    return await db.query.services.findMany({ orderBy: [services.order] });
+  }
+
+  async getActiveServices(): Promise<Service[]> {
+    return await db.query.services.findMany({
+      where: eq(services.isActive, true),
+      orderBy: [services.order]
+    });
+  }
+
+  async updateService(id: number, data: Partial<InsertService>): Promise<Service | undefined> {
+    const [service] = await db.update(services).set({ ...data, updatedAt: new Date() }).where(eq(services.id, id)).returning();
+    return service;
+  }
+
+  async deleteService(id: number): Promise<void> {
+    await db.delete(services).where(eq(services.id, id));
   }
 }
 

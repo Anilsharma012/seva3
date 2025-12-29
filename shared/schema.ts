@@ -8,7 +8,8 @@ export const inquiryStatusEnum = pgEnum("inquiry_status", ["pending", "read", "r
 export const paymentStatusEnum = pgEnum("payment_status", ["pending", "paid", "approved"]);
 export const paymentTypeEnum = pgEnum("payment_type", ["donation", "fee", "membership", "general"]);
 export const settingTypeEnum = pgEnum("setting_type", ["boolean", "string", "number", "json"]);
-export const sectionKeyEnum = pgEnum("section_key", ["about", "services", "gallery", "events", "joinUs", "contact", "volunteer"]);
+export const sectionKeyEnum = pgEnum("section_key", ["about", "services", "gallery", "events", "joinUs", "contact", "volunteer", "team", "home"]);
+export const transactionTypeEnum = pgEnum("transaction_type", ["donation", "membership", "fee", "other"]);
 
 export const admins = pgTable("admins", {
   id: serial("id").primaryKey(),
@@ -65,6 +66,8 @@ export const admitCards = pgTable("admit_cards", {
   examName: text("exam_name").notNull(),
   fileUrl: text("file_url").notNull(),
   fileName: text("file_name").notNull(),
+  termsEnglish: text("terms_english"),
+  termsHindi: text("terms_hindi"),
   uploadedAt: timestamp("uploaded_at").defaultNow().notNull(),
 });
 
@@ -218,6 +221,85 @@ export const contactInquiries = pgTable("contact_inquiries", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+export const volunteerAccounts = pgTable("volunteer_accounts", {
+  id: serial("id").primaryKey(),
+  email: text("email").notNull().unique(),
+  password: text("password").notNull(),
+  fullName: text("full_name").notNull(),
+  phone: text("phone").notNull(),
+  address: text("address"),
+  city: text("city"),
+  photoUrl: text("photo_url"),
+  occupation: text("occupation"),
+  skills: text("skills"),
+  availability: text("availability"),
+  isActive: boolean("is_active").default(true).notNull(),
+  isApproved: boolean("is_approved").default(false).notNull(),
+  approvedBy: integer("approved_by").references(() => admins.id),
+  approvedAt: timestamp("approved_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const paymentTransactions = pgTable("payment_transactions", {
+  id: serial("id").primaryKey(),
+  type: transactionTypeEnum("type").notNull(),
+  name: text("name").notNull(),
+  email: text("email"),
+  phone: text("phone").notNull(),
+  amount: integer("amount").notNull(),
+  transactionId: text("transaction_id").notNull(),
+  paymentMethod: text("payment_method"),
+  purpose: text("purpose"),
+  status: statusEnum("status").default("pending").notNull(),
+  membershipId: integer("membership_id").references(() => memberships.id),
+  studentId: integer("student_id").references(() => students.id),
+  photoUrl: text("photo_url"),
+  fatherName: text("father_name"),
+  address: text("address"),
+  city: text("city"),
+  state: text("state"),
+  pincode: text("pincode"),
+  membershipLevel: text("membership_level"),
+  adminNotes: text("admin_notes"),
+  approvedBy: integer("approved_by").references(() => admins.id),
+  approvedAt: timestamp("approved_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const teamMembers = pgTable("team_members", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  nameHindi: text("name_hindi"),
+  designation: text("designation").notNull(),
+  designationHindi: text("designation_hindi"),
+  photoUrl: text("photo_url"),
+  phone: text("phone"),
+  email: text("email"),
+  bio: text("bio"),
+  bioHindi: text("bio_hindi"),
+  socialLinks: jsonb("social_links"),
+  order: integer("order").default(0).notNull(),
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const services = pgTable("services", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  nameHindi: text("name_hindi"),
+  description: text("description").notNull(),
+  descriptionHindi: text("description_hindi"),
+  iconKey: text("icon_key"),
+  imageUrl: text("image_url"),
+  order: integer("order").default(0).notNull(),
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
 export const insertAdminSchema = createInsertSchema(admins).omit({ id: true, createdAt: true });
 export const insertStudentSchema = createInsertSchema(students).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertResultSchema = createInsertSchema(results).omit({ id: true, createdAt: true });
@@ -232,6 +314,10 @@ export const insertFeeStructureSchema = createInsertSchema(feeStructures).omit({
 export const insertMembershipCardSchema = createInsertSchema(membershipCards).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertPageSchema = createInsertSchema(pages).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertContactInquirySchema = createInsertSchema(contactInquiries).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertVolunteerAccountSchema = createInsertSchema(volunteerAccounts).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertPaymentTransactionSchema = createInsertSchema(paymentTransactions).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertTeamMemberSchema = createInsertSchema(teamMembers).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertServiceSchema = createInsertSchema(services).omit({ id: true, createdAt: true, updatedAt: true });
 
 export type InsertAdmin = z.infer<typeof insertAdminSchema>;
 export type InsertStudent = z.infer<typeof insertStudentSchema>;
@@ -247,6 +333,10 @@ export type InsertFeeStructure = z.infer<typeof insertFeeStructureSchema>;
 export type InsertMembershipCard = z.infer<typeof insertMembershipCardSchema>;
 export type InsertPage = z.infer<typeof insertPageSchema>;
 export type InsertContactInquiry = z.infer<typeof insertContactInquirySchema>;
+export type InsertVolunteerAccount = z.infer<typeof insertVolunteerAccountSchema>;
+export type InsertPaymentTransaction = z.infer<typeof insertPaymentTransactionSchema>;
+export type InsertTeamMember = z.infer<typeof insertTeamMemberSchema>;
+export type InsertService = z.infer<typeof insertServiceSchema>;
 
 export type Admin = typeof admins.$inferSelect;
 export type Student = typeof students.$inferSelect;
@@ -262,3 +352,7 @@ export type FeeStructure = typeof feeStructures.$inferSelect;
 export type MembershipCard = typeof membershipCards.$inferSelect;
 export type Page = typeof pages.$inferSelect;
 export type ContactInquiry = typeof contactInquiries.$inferSelect;
+export type VolunteerAccount = typeof volunteerAccounts.$inferSelect;
+export type PaymentTransaction = typeof paymentTransactions.$inferSelect;
+export type TeamMember = typeof teamMembers.$inferSelect;
+export type Service = typeof services.$inferSelect;
