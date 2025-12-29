@@ -62,6 +62,14 @@ export async function registerRoutes(app: Express): Promise<void> {
         return res.status(401).json({ error: "Invalid credentials" });
       }
       
+      // Check if student has approved payment transaction
+      const transactions = await storage.getPaymentTransactionsByEmail(email);
+      const hasApprovedPayment = transactions.some(t => t.status === "approved" && (t.type === "fee" || t.type === "membership"));
+      
+      if (!student.feePaid && !hasApprovedPayment) {
+        return res.status(403).json({ error: "Payment pending approval. Please wait for admin approval. / भुगतान स्वीकृति लंबित है।" });
+      }
+      
       const token = generateToken({ id: student.id.toString(), email: student.email, role: "student", name: student.fullName });
       res.json({ token, user: { id: student.id, email: student.email, role: "student", name: student.fullName } });
     } catch (error) {
@@ -892,6 +900,11 @@ export async function registerRoutes(app: Express): Promise<void> {
       const isValid = await bcrypt.compare(password, volunteer.password);
       if (!isValid) {
         return res.status(401).json({ error: "Invalid credentials" });
+      }
+      
+      // Check if volunteer is approved by admin
+      if (!volunteer.isApproved) {
+        return res.status(403).json({ error: "Account pending admin approval. Please wait. / खाता व्यवस्थापक स्वीकृति की प्रतीक्षा में है।" });
       }
       
       const token = generateToken({ id: volunteer.id.toString(), email: volunteer.email, role: "volunteer", name: volunteer.fullName });
