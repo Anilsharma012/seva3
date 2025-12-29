@@ -1,9 +1,6 @@
 import type { Express } from "express";
 import bcrypt from "bcryptjs";
-import { 
-  Admin, Student, Result, AdmitCard, Membership, MenuItem, AdminSetting,
-  PaymentConfig, ContentSection, VolunteerApplication, FeeStructure, MembershipCard, Page, ContactInquiry
-} from "./models";
+import { storage } from "./storage";
 import { authMiddleware, adminOnly, generateToken, AuthRequest } from "./middleware/auth";
 
 export async function registerRoutes(app: Express): Promise<void> {
@@ -11,7 +8,7 @@ export async function registerRoutes(app: Express): Promise<void> {
   app.post("/api/auth/admin/login", async (req, res) => {
     try {
       const { email, password } = req.body;
-      const admin = await Admin.findOne({ email });
+      const admin = await storage.getAdminByEmail(email);
       
       if (!admin) {
         return res.status(401).json({ error: "Invalid credentials" });
@@ -22,8 +19,8 @@ export async function registerRoutes(app: Express): Promise<void> {
         return res.status(401).json({ error: "Invalid credentials" });
       }
       
-      const token = generateToken({ id: admin._id.toString(), email: admin.email, role: "admin", name: admin.name });
-      res.json({ token, user: { id: admin._id, email: admin.email, role: "admin", name: admin.name } });
+      const token = generateToken({ id: admin.id.toString(), email: admin.email, role: "admin", name: admin.name });
+      res.json({ token, user: { id: admin.id, email: admin.email, role: "admin", name: admin.name } });
     } catch (error) {
       res.status(500).json({ error: "Login failed" });
     }
@@ -32,17 +29,16 @@ export async function registerRoutes(app: Express): Promise<void> {
   app.post("/api/auth/admin/register", async (req, res) => {
     try {
       const { email, password, name } = req.body;
-      const existing = await Admin.findOne({ email });
+      const existing = await storage.getAdminByEmail(email);
       if (existing) {
         return res.status(400).json({ error: "Admin already exists" });
       }
       
       const hashedPassword = await bcrypt.hash(password, 10);
-      const admin = new Admin({ email, password: hashedPassword, name });
-      await admin.save();
+      const admin = await storage.createAdmin({ email, password: hashedPassword, name });
       
-      const token = generateToken({ id: admin._id.toString(), email: admin.email, role: "admin", name: admin.name });
-      res.status(201).json({ token, user: { id: admin._id, email: admin.email, role: "admin", name: admin.name } });
+      const token = generateToken({ id: admin.id.toString(), email: admin.email, role: "admin", name: admin.name });
+      res.status(201).json({ token, user: { id: admin.id, email: admin.email, role: "admin", name: admin.name } });
     } catch (error) {
       res.status(500).json({ error: "Registration failed" });
     }
@@ -51,7 +47,7 @@ export async function registerRoutes(app: Express): Promise<void> {
   app.post("/api/auth/student/login", async (req, res) => {
     try {
       const { email, password } = req.body;
-      const student = await Student.findOne({ email });
+      const student = await storage.getStudentByEmail(email);
       
       if (!student) {
         return res.status(401).json({ error: "Invalid credentials" });
@@ -66,8 +62,8 @@ export async function registerRoutes(app: Express): Promise<void> {
         return res.status(401).json({ error: "Invalid credentials" });
       }
       
-      const token = generateToken({ id: student._id.toString(), email: student.email, role: "student", name: student.fullName });
-      res.json({ token, user: { id: student._id, email: student.email, role: "student", name: student.fullName } });
+      const token = generateToken({ id: student.id.toString(), email: student.email, role: "student", name: student.fullName });
+      res.json({ token, user: { id: student.id, email: student.email, role: "student", name: student.fullName } });
     } catch (error) {
       res.status(500).json({ error: "Login failed" });
     }
@@ -77,20 +73,20 @@ export async function registerRoutes(app: Express): Promise<void> {
     try {
       const { email, password, fullName, phone, fatherName, motherName, address, city, pincode, dateOfBirth, gender, class: studentClass, feeLevel } = req.body;
       
-      const existing = await Student.findOne({ email });
+      const existing = await storage.getStudentByEmail(email);
       if (existing) {
         return res.status(400).json({ error: "Email already registered" });
       }
       
       const year = new Date().getFullYear();
-      const count = await Student.countDocuments({ registrationNumber: { $regex: `^MWSS${year}` } });
+      const count = await storage.countStudentsWithRegPrefix(`MWSS${year}`);
       const registrationNumber = `MWSS${year}${String(count + 1).padStart(4, "0")}`;
       
       const feeAmounts: Record<string, number> = { village: 99, block: 199, district: 299, haryana: 399 };
       const feeAmount = feeAmounts[feeLevel] || 99;
       
       const hashedPassword = await bcrypt.hash(password, 10);
-      const student = new Student({
+      const student = await storage.createStudent({
         email,
         password: hashedPassword,
         fullName,
@@ -107,10 +103,9 @@ export async function registerRoutes(app: Express): Promise<void> {
         feeLevel: feeLevel || "village",
         feeAmount,
       });
-      await student.save();
       
-      const token = generateToken({ id: student._id.toString(), email: student.email, role: "student", name: student.fullName });
-      res.status(201).json({ token, user: { id: student._id, email: student.email, role: "student", name: student.fullName }, registrationNumber });
+      const token = generateToken({ id: student.id.toString(), email: student.email, role: "student", name: student.fullName });
+      res.status(201).json({ token, user: { id: student.id, email: student.email, role: "student", name: student.fullName }, registrationNumber });
     } catch (error) {
       console.error("Registration error:", error);
       res.status(500).json({ error: "Registration failed" });
@@ -120,13 +115,15 @@ export async function registerRoutes(app: Express): Promise<void> {
   app.get("/api/auth/me", authMiddleware, async (req: AuthRequest, res) => {
     try {
       if (req.user?.role === "admin") {
-        const admin = await Admin.findById(req.user.id).select("-password");
+        const admin = await storage.getAdminById(parseInt(req.user.id));
         if (!admin) return res.status(404).json({ error: "Admin not found" });
-        res.json({ ...admin.toObject(), role: "admin" });
+        const { password, ...adminData } = admin;
+        res.json({ ...adminData, role: "admin" });
       } else {
-        const student = await Student.findById(req.user?.id).select("-password");
+        const student = await storage.getStudentById(parseInt(req.user?.id || "0"));
         if (!student) return res.status(404).json({ error: "Student not found" });
-        res.json({ ...student.toObject(), role: "student" });
+        const { password, ...studentData } = student;
+        res.json({ ...studentData, role: "student" });
       }
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch user" });
@@ -135,8 +132,8 @@ export async function registerRoutes(app: Express): Promise<void> {
 
   app.get("/api/students", authMiddleware, adminOnly, async (req: AuthRequest, res) => {
     try {
-      const students = await Student.find().select("-password").sort({ createdAt: -1 });
-      res.json(students);
+      const students = await storage.getAllStudents();
+      res.json(students.map(({ password, ...s }) => s));
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch students" });
     }
@@ -144,14 +141,15 @@ export async function registerRoutes(app: Express): Promise<void> {
 
   app.get("/api/students/:id", authMiddleware, async (req: AuthRequest, res) => {
     try {
-      const student = await Student.findById(req.params.id).select("-password");
+      const student = await storage.getStudentById(parseInt(req.params.id));
       if (!student) {
         return res.status(404).json({ error: "Student not found" });
       }
-      if (req.user?.role !== "admin" && req.user?.id !== student._id.toString()) {
+      if (req.user?.role !== "admin" && req.user?.id !== student.id.toString()) {
         return res.status(403).json({ error: "Forbidden" });
       }
-      res.json(student);
+      const { password, ...studentData } = student;
+      res.json(studentData);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch student" });
     }
@@ -159,11 +157,12 @@ export async function registerRoutes(app: Express): Promise<void> {
 
   app.patch("/api/students/:id", authMiddleware, adminOnly, async (req: AuthRequest, res) => {
     try {
-      const student = await Student.findByIdAndUpdate(req.params.id, { ...req.body, updatedAt: new Date() }, { new: true }).select("-password");
+      const student = await storage.updateStudent(parseInt(req.params.id), req.body);
       if (!student) {
         return res.status(404).json({ error: "Student not found" });
       }
-      res.json(student);
+      const { password, ...studentData } = student;
+      res.json(studentData);
     } catch (error) {
       res.status(500).json({ error: "Failed to update student" });
     }
@@ -174,14 +173,14 @@ export async function registerRoutes(app: Express): Promise<void> {
       const { email, password, fullName, phone, fatherName, motherName, address, city, pincode, dateOfBirth, gender, class: studentClass, feeLevel } = req.body;
       
       const year = new Date().getFullYear();
-      const count = await Student.countDocuments({ registrationNumber: { $regex: `^MWSS${year}` } });
+      const count = await storage.countStudentsWithRegPrefix(`MWSS${year}`);
       const registrationNumber = `MWSS${year}${String(count + 1).padStart(4, "0")}`;
       
       const feeAmounts: Record<string, number> = { village: 99, block: 199, district: 299, haryana: 399 };
       const feeAmount = feeAmounts[feeLevel] || 99;
       
       const hashedPassword = await bcrypt.hash(password || "password123", 10);
-      const student = new Student({
+      const student = await storage.createStudent({
         email,
         password: hashedPassword,
         fullName,
@@ -198,9 +197,9 @@ export async function registerRoutes(app: Express): Promise<void> {
         feeLevel: feeLevel || "village",
         feeAmount,
       });
-      await student.save();
       
-      res.status(201).json({ ...student.toObject(), password: undefined });
+      const { password: _, ...studentData } = student;
+      res.status(201).json(studentData);
     } catch (error) {
       res.status(500).json({ error: "Failed to create student" });
     }
@@ -208,15 +207,12 @@ export async function registerRoutes(app: Express): Promise<void> {
 
   app.get("/api/dashboard/stats", authMiddleware, adminOnly, async (req: AuthRequest, res) => {
     try {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
+      const students = await storage.getAllStudents();
+      const todayRegistrations = await storage.countStudentsToday();
+      const feesPaid = await storage.countStudentsFeePaid();
+      const activeStudents = await storage.countActiveStudents();
       
-      const totalStudents = await Student.countDocuments();
-      const todayRegistrations = await Student.countDocuments({ createdAt: { $gte: today } });
-      const feesPaid = await Student.countDocuments({ feePaid: true });
-      const activeStudents = await Student.countDocuments({ isActive: true });
-      
-      res.json({ totalStudents, todayRegistrations, feesPaid, activeStudents });
+      res.json({ totalStudents: students.length, todayRegistrations, feesPaid, activeStudents });
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch stats" });
     }
@@ -224,9 +220,13 @@ export async function registerRoutes(app: Express): Promise<void> {
 
   app.get("/api/results", authMiddleware, async (req: AuthRequest, res) => {
     try {
-      const query = req.user?.role === "admin" ? {} : { studentId: req.user?.id, isPublished: true };
-      const results = await Result.find(query).populate("studentId", "fullName registrationNumber rollNumber").sort({ createdAt: -1 });
-      res.json(results);
+      if (req.user?.role === "admin") {
+        const results = await storage.getAllResults();
+        res.json(results);
+      } else {
+        const results = await storage.getResultsByStudentId(parseInt(req.user?.id || "0"), true);
+        res.json(results);
+      }
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch results" });
     }
@@ -234,10 +234,8 @@ export async function registerRoutes(app: Express): Promise<void> {
 
   app.get("/api/results/student/:studentId", authMiddleware, async (req: AuthRequest, res) => {
     try {
-      const query = req.user?.role === "admin" 
-        ? { studentId: req.params.studentId }
-        : { studentId: req.params.studentId, isPublished: true };
-      const results = await Result.find(query).sort({ createdAt: -1 });
+      const publishedOnly = req.user?.role !== "admin";
+      const results = await storage.getResultsByStudentId(parseInt(req.params.studentId), publishedOnly);
       res.json(results);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch results" });
@@ -246,8 +244,7 @@ export async function registerRoutes(app: Express): Promise<void> {
 
   app.post("/api/results", authMiddleware, adminOnly, async (req: AuthRequest, res) => {
     try {
-      const result = new Result(req.body);
-      await result.save();
+      const result = await storage.createResult(req.body);
       res.status(201).json(result);
     } catch (error) {
       res.status(500).json({ error: "Failed to create result" });
@@ -256,7 +253,7 @@ export async function registerRoutes(app: Express): Promise<void> {
 
   app.patch("/api/results/:id", authMiddleware, adminOnly, async (req: AuthRequest, res) => {
     try {
-      const result = await Result.findByIdAndUpdate(req.params.id, req.body, { new: true });
+      const result = await storage.updateResult(parseInt(req.params.id), req.body);
       if (!result) {
         return res.status(404).json({ error: "Result not found" });
       }
@@ -268,9 +265,13 @@ export async function registerRoutes(app: Express): Promise<void> {
 
   app.get("/api/admit-cards", authMiddleware, async (req: AuthRequest, res) => {
     try {
-      const query = req.user?.role === "admin" ? {} : { studentId: req.user?.id };
-      const admitCards = await AdmitCard.find(query).populate("studentId", "fullName registrationNumber rollNumber").sort({ uploadedAt: -1 });
-      res.json(admitCards);
+      if (req.user?.role === "admin") {
+        const admitCards = await storage.getAllAdmitCards();
+        res.json(admitCards);
+      } else {
+        const admitCards = await storage.getAdmitCardsByStudentId(parseInt(req.user?.id || "0"));
+        res.json(admitCards);
+      }
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch admit cards" });
     }
@@ -278,7 +279,7 @@ export async function registerRoutes(app: Express): Promise<void> {
 
   app.get("/api/admit-cards/student/:studentId", authMiddleware, async (req: AuthRequest, res) => {
     try {
-      const admitCards = await AdmitCard.find({ studentId: req.params.studentId }).sort({ uploadedAt: -1 });
+      const admitCards = await storage.getAdmitCardsByStudentId(parseInt(req.params.studentId));
       res.json(admitCards);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch admit cards" });
@@ -287,8 +288,7 @@ export async function registerRoutes(app: Express): Promise<void> {
 
   app.post("/api/admit-cards", authMiddleware, adminOnly, async (req: AuthRequest, res) => {
     try {
-      const admitCard = new AdmitCard(req.body);
-      await admitCard.save();
+      const admitCard = await storage.createAdmitCard(req.body);
       res.status(201).json(admitCard);
     } catch (error) {
       res.status(500).json({ error: "Failed to create admit card" });
@@ -297,7 +297,7 @@ export async function registerRoutes(app: Express): Promise<void> {
 
   app.delete("/api/admit-cards/:id", authMiddleware, adminOnly, async (req: AuthRequest, res) => {
     try {
-      await AdmitCard.findByIdAndDelete(req.params.id);
+      await storage.deleteAdmitCard(parseInt(req.params.id));
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({ error: "Failed to delete admit card" });
@@ -306,7 +306,7 @@ export async function registerRoutes(app: Express): Promise<void> {
 
   app.get("/api/memberships", authMiddleware, adminOnly, async (req: AuthRequest, res) => {
     try {
-      const memberships = await Membership.find().sort({ createdAt: -1 });
+      const memberships = await storage.getAllMemberships();
       res.json(memberships);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch memberships" });
@@ -315,10 +315,9 @@ export async function registerRoutes(app: Express): Promise<void> {
 
   app.post("/api/memberships", async (req, res) => {
     try {
-      const count = await Membership.countDocuments();
+      const count = await storage.countMemberships();
       const membershipNumber = `MWSS-M${String(count + 1).padStart(4, "0")}`;
-      const membership = new Membership({ ...req.body, membershipNumber });
-      await membership.save();
+      const membership = await storage.createMembership({ ...req.body, membershipNumber });
       res.status(201).json(membership);
     } catch (error) {
       res.status(500).json({ error: "Failed to create membership" });
@@ -327,7 +326,7 @@ export async function registerRoutes(app: Express): Promise<void> {
 
   app.patch("/api/memberships/:id", authMiddleware, adminOnly, async (req: AuthRequest, res) => {
     try {
-      const membership = await Membership.findByIdAndUpdate(req.params.id, req.body, { new: true });
+      const membership = await storage.updateMembership(parseInt(req.params.id), req.body);
       if (!membership) {
         return res.status(404).json({ error: "Membership not found" });
       }
@@ -340,13 +339,14 @@ export async function registerRoutes(app: Express): Promise<void> {
   app.get("/api/my-profile", authMiddleware, async (req: AuthRequest, res) => {
     try {
       if (req.user?.role === "student") {
-        const student = await Student.findById(req.user.id).select("-password");
+        const student = await storage.getStudentById(parseInt(req.user.id));
         if (!student) return res.status(404).json({ error: "Student not found" });
         
-        const results = await Result.find({ studentId: student._id, isPublished: true });
-        const admitCards = await AdmitCard.find({ studentId: student._id });
+        const results = await storage.getResultsByStudentId(student.id, true);
+        const admitCards = await storage.getAdmitCardsByStudentId(student.id);
         
-        res.json({ student, results, admitCards });
+        const { password, ...studentData } = student;
+        res.json({ student: studentData, results, admitCards });
       } else {
         res.status(403).json({ error: "Students only" });
       }
@@ -357,7 +357,7 @@ export async function registerRoutes(app: Express): Promise<void> {
 
   app.get("/api/admin/menu", authMiddleware, adminOnly, async (req: AuthRequest, res) => {
     try {
-      const menuItems = await MenuItem.find({ isActive: true }).sort({ order: 1 });
+      const menuItems = await storage.getActiveMenuItems();
       res.json(menuItems);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch menu items" });
@@ -366,7 +366,7 @@ export async function registerRoutes(app: Express): Promise<void> {
 
   app.get("/api/admin/menu/all", authMiddleware, adminOnly, async (req: AuthRequest, res) => {
     try {
-      const menuItems = await MenuItem.find().sort({ order: 1 });
+      const menuItems = await storage.getAllMenuItems();
       res.json(menuItems);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch menu items" });
@@ -375,8 +375,7 @@ export async function registerRoutes(app: Express): Promise<void> {
 
   app.post("/api/admin/menu", authMiddleware, adminOnly, async (req: AuthRequest, res) => {
     try {
-      const menuItem = new MenuItem(req.body);
-      await menuItem.save();
+      const menuItem = await storage.createMenuItem(req.body);
       res.status(201).json(menuItem);
     } catch (error) {
       res.status(500).json({ error: "Failed to create menu item" });
@@ -385,11 +384,7 @@ export async function registerRoutes(app: Express): Promise<void> {
 
   app.patch("/api/admin/menu/:id", authMiddleware, adminOnly, async (req: AuthRequest, res) => {
     try {
-      const menuItem = await MenuItem.findByIdAndUpdate(
-        req.params.id,
-        { ...req.body, updatedAt: new Date() },
-        { new: true }
-      );
+      const menuItem = await storage.updateMenuItem(parseInt(req.params.id), req.body);
       if (!menuItem) {
         return res.status(404).json({ error: "Menu item not found" });
       }
@@ -401,7 +396,7 @@ export async function registerRoutes(app: Express): Promise<void> {
 
   app.delete("/api/admin/menu/:id", authMiddleware, adminOnly, async (req: AuthRequest, res) => {
     try {
-      await MenuItem.findByIdAndDelete(req.params.id);
+      await storage.deleteMenuItem(parseInt(req.params.id));
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({ error: "Failed to delete menu item" });
@@ -410,7 +405,7 @@ export async function registerRoutes(app: Express): Promise<void> {
 
   app.get("/api/admin/settings", authMiddleware, adminOnly, async (req: AuthRequest, res) => {
     try {
-      const settings = await AdminSetting.find().sort({ category: 1, key: 1 });
+      const settings = await storage.getAllAdminSettings();
       res.json(settings);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch settings" });
@@ -419,7 +414,7 @@ export async function registerRoutes(app: Express): Promise<void> {
 
   app.get("/api/admin/settings/:key", authMiddleware, adminOnly, async (req: AuthRequest, res) => {
     try {
-      const setting = await AdminSetting.findOne({ key: req.params.key });
+      const setting = await storage.getAdminSettingByKey(req.params.key);
       if (!setting) {
         return res.status(404).json({ error: "Setting not found" });
       }
@@ -431,11 +426,7 @@ export async function registerRoutes(app: Express): Promise<void> {
 
   app.patch("/api/admin/settings/:key", authMiddleware, adminOnly, async (req: AuthRequest, res) => {
     try {
-      const setting = await AdminSetting.findOneAndUpdate(
-        { key: req.params.key },
-        { ...req.body, updatedAt: new Date() },
-        { new: true, upsert: true }
-      );
+      const setting = await storage.updateAdminSettingByKey(req.params.key, req.body);
       res.json(setting);
     } catch (error) {
       res.status(500).json({ error: "Failed to update setting" });
@@ -444,8 +435,7 @@ export async function registerRoutes(app: Express): Promise<void> {
 
   app.post("/api/admin/settings", authMiddleware, adminOnly, async (req: AuthRequest, res) => {
     try {
-      const setting = new AdminSetting(req.body);
-      await setting.save();
+      const setting = await storage.createAdminSetting(req.body);
       res.status(201).json(setting);
     } catch (error) {
       res.status(500).json({ error: "Failed to create setting" });
@@ -454,7 +444,7 @@ export async function registerRoutes(app: Express): Promise<void> {
 
   app.get("/api/public/settings", async (req, res) => {
     try {
-      const settings = await AdminSetting.find();
+      const settings = await storage.getAllAdminSettings();
       res.json(settings);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch settings" });
@@ -464,13 +454,14 @@ export async function registerRoutes(app: Express): Promise<void> {
   app.get("/api/public/admit-card/:rollNumber", async (req, res) => {
     try {
       const { rollNumber } = req.params;
-      const student = await Student.findOne({ rollNumber });
+      const student = await storage.getStudentByRollNumber(rollNumber);
       
       if (!student) {
         return res.status(404).json({ message: "Student not found with this roll number" });
       }
       
-      const admitCard = await AdmitCard.findOne({ studentId: student._id }).sort({ createdAt: -1 });
+      const admitCards = await storage.getAdmitCardsByStudentId(student.id);
+      const admitCard = admitCards[0];
       
       if (!admitCard) {
         return res.status(404).json({ message: "Admit card not available for this student" });
@@ -499,10 +490,9 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
 
-  // Payment Config Routes
   app.get("/api/admin/payment-config", authMiddleware, adminOnly, async (req: AuthRequest, res) => {
     try {
-      const configs = await PaymentConfig.find().sort({ type: 1, order: 1 });
+      const configs = await storage.getAllPaymentConfigs();
       res.json(configs);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch payment configs" });
@@ -511,7 +501,7 @@ export async function registerRoutes(app: Express): Promise<void> {
 
   app.get("/api/public/payment-config/:type", async (req, res) => {
     try {
-      const configs = await PaymentConfig.find({ type: req.params.type, isActive: true }).sort({ order: 1 });
+      const configs = await storage.getPaymentConfigsByType(req.params.type);
       res.json(configs);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch payment config" });
@@ -520,8 +510,7 @@ export async function registerRoutes(app: Express): Promise<void> {
 
   app.post("/api/admin/payment-config", authMiddleware, adminOnly, async (req: AuthRequest, res) => {
     try {
-      const config = new PaymentConfig(req.body);
-      await config.save();
+      const config = await storage.createPaymentConfig(req.body);
       res.status(201).json(config);
     } catch (error) {
       res.status(500).json({ error: "Failed to create payment config" });
@@ -530,7 +519,7 @@ export async function registerRoutes(app: Express): Promise<void> {
 
   app.patch("/api/admin/payment-config/:id", authMiddleware, adminOnly, async (req: AuthRequest, res) => {
     try {
-      const config = await PaymentConfig.findByIdAndUpdate(req.params.id, { ...req.body, updatedAt: new Date() }, { new: true });
+      const config = await storage.updatePaymentConfig(parseInt(req.params.id), req.body);
       if (!config) return res.status(404).json({ error: "Payment config not found" });
       res.json(config);
     } catch (error) {
@@ -540,17 +529,16 @@ export async function registerRoutes(app: Express): Promise<void> {
 
   app.delete("/api/admin/payment-config/:id", authMiddleware, adminOnly, async (req: AuthRequest, res) => {
     try {
-      await PaymentConfig.findByIdAndDelete(req.params.id);
+      await storage.deletePaymentConfig(parseInt(req.params.id));
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({ error: "Failed to delete payment config" });
     }
   });
 
-  // Content Section Routes
   app.get("/api/admin/content-sections", authMiddleware, adminOnly, async (req: AuthRequest, res) => {
     try {
-      const sections = await ContentSection.find().sort({ sectionKey: 1, order: 1 });
+      const sections = await storage.getAllContentSections();
       res.json(sections);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch content sections" });
@@ -559,7 +547,7 @@ export async function registerRoutes(app: Express): Promise<void> {
 
   app.get("/api/public/content/:sectionKey", async (req, res) => {
     try {
-      const sections = await ContentSection.find({ sectionKey: req.params.sectionKey, isActive: true }).sort({ order: 1 });
+      const sections = await storage.getContentSectionsByKey(req.params.sectionKey);
       res.json(sections);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch content" });
@@ -568,8 +556,7 @@ export async function registerRoutes(app: Express): Promise<void> {
 
   app.post("/api/admin/content-sections", authMiddleware, adminOnly, async (req: AuthRequest, res) => {
     try {
-      const section = new ContentSection(req.body);
-      await section.save();
+      const section = await storage.createContentSection(req.body);
       res.status(201).json(section);
     } catch (error) {
       res.status(500).json({ error: "Failed to create content section" });
@@ -578,7 +565,7 @@ export async function registerRoutes(app: Express): Promise<void> {
 
   app.patch("/api/admin/content-sections/:id", authMiddleware, adminOnly, async (req: AuthRequest, res) => {
     try {
-      const section = await ContentSection.findByIdAndUpdate(req.params.id, { ...req.body, updatedAt: new Date() }, { new: true });
+      const section = await storage.updateContentSection(parseInt(req.params.id), req.body);
       if (!section) return res.status(404).json({ error: "Content section not found" });
       res.json(section);
     } catch (error) {
@@ -588,17 +575,16 @@ export async function registerRoutes(app: Express): Promise<void> {
 
   app.delete("/api/admin/content-sections/:id", authMiddleware, adminOnly, async (req: AuthRequest, res) => {
     try {
-      await ContentSection.findByIdAndDelete(req.params.id);
+      await storage.deleteContentSection(parseInt(req.params.id));
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({ error: "Failed to delete content section" });
     }
   });
 
-  // Volunteer Application Routes
   app.get("/api/admin/volunteers", authMiddleware, adminOnly, async (req: AuthRequest, res) => {
     try {
-      const volunteers = await VolunteerApplication.find().sort({ createdAt: -1 });
+      const volunteers = await storage.getAllVolunteerApplications();
       res.json(volunteers);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch volunteers" });
@@ -607,8 +593,7 @@ export async function registerRoutes(app: Express): Promise<void> {
 
   app.post("/api/public/volunteer-apply", async (req, res) => {
     try {
-      const application = new VolunteerApplication(req.body);
-      await application.save();
+      await storage.createVolunteerApplication(req.body);
       res.status(201).json({ success: true, message: "Application submitted successfully" });
     } catch (error) {
       res.status(500).json({ error: "Failed to submit application" });
@@ -617,7 +602,7 @@ export async function registerRoutes(app: Express): Promise<void> {
 
   app.patch("/api/admin/volunteers/:id", authMiddleware, adminOnly, async (req: AuthRequest, res) => {
     try {
-      const volunteer = await VolunteerApplication.findByIdAndUpdate(req.params.id, { ...req.body, updatedAt: new Date() }, { new: true });
+      const volunteer = await storage.updateVolunteerApplication(parseInt(req.params.id), req.body);
       if (!volunteer) return res.status(404).json({ error: "Volunteer not found" });
       res.json(volunteer);
     } catch (error) {
@@ -625,19 +610,9 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
 
-  app.delete("/api/admin/volunteers/:id", authMiddleware, adminOnly, async (req: AuthRequest, res) => {
-    try {
-      await VolunteerApplication.findByIdAndDelete(req.params.id);
-      res.json({ success: true });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to delete volunteer" });
-    }
-  });
-
-  // Fee Structure Routes
   app.get("/api/admin/fee-structures", authMiddleware, adminOnly, async (req: AuthRequest, res) => {
     try {
-      const structures = await FeeStructure.find().sort({ level: 1 });
+      const structures = await storage.getAllFeeStructures();
       res.json(structures);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch fee structures" });
@@ -646,8 +621,8 @@ export async function registerRoutes(app: Express): Promise<void> {
 
   app.get("/api/public/fee-structures", async (req, res) => {
     try {
-      const structures = await FeeStructure.find({ isActive: true }).sort({ amount: 1 });
-      res.json(structures);
+      const structures = await storage.getAllFeeStructures();
+      res.json(structures.filter(s => s.isActive));
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch fee structures" });
     }
@@ -655,8 +630,7 @@ export async function registerRoutes(app: Express): Promise<void> {
 
   app.post("/api/admin/fee-structures", authMiddleware, adminOnly, async (req: AuthRequest, res) => {
     try {
-      const structure = new FeeStructure(req.body);
-      await structure.save();
+      const structure = await storage.createFeeStructure(req.body);
       res.status(201).json(structure);
     } catch (error) {
       res.status(500).json({ error: "Failed to create fee structure" });
@@ -665,7 +639,7 @@ export async function registerRoutes(app: Express): Promise<void> {
 
   app.patch("/api/admin/fee-structures/:id", authMiddleware, adminOnly, async (req: AuthRequest, res) => {
     try {
-      const structure = await FeeStructure.findByIdAndUpdate(req.params.id, { ...req.body, updatedAt: new Date() }, { new: true });
+      const structure = await storage.updateFeeStructure(parseInt(req.params.id), req.body);
       if (!structure) return res.status(404).json({ error: "Fee structure not found" });
       res.json(structure);
     } catch (error) {
@@ -673,19 +647,9 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
 
-  app.delete("/api/admin/fee-structures/:id", authMiddleware, adminOnly, async (req: AuthRequest, res) => {
-    try {
-      await FeeStructure.findByIdAndDelete(req.params.id);
-      res.json({ success: true });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to delete fee structure" });
-    }
-  });
-
-  // Membership Card Routes
   app.get("/api/admin/membership-cards", authMiddleware, adminOnly, async (req: AuthRequest, res) => {
     try {
-      const cards = await MembershipCard.find().populate("membershipId").sort({ createdAt: -1 });
+      const cards = await storage.getAllMembershipCards();
       res.json(cards);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch membership cards" });
@@ -695,11 +659,11 @@ export async function registerRoutes(app: Express): Promise<void> {
   app.post("/api/admin/membership-cards", authMiddleware, adminOnly, async (req: AuthRequest, res) => {
     try {
       const year = new Date().getFullYear();
-      const count = await MembershipCard.countDocuments({ cardNumber: { $regex: `^MC${year}` } });
+      const cards = await storage.getAllMembershipCards();
+      const count = cards.filter(c => c.cardNumber.startsWith(`MC${year}`)).length;
       const cardNumber = `MC${year}${String(count + 1).padStart(4, "0")}`;
       
-      const card = new MembershipCard({ ...req.body, cardNumber });
-      await card.save();
+      const card = await storage.createMembershipCard({ ...req.body, cardNumber });
       res.status(201).json(card);
     } catch (error) {
       res.status(500).json({ error: "Failed to create membership card" });
@@ -708,13 +672,13 @@ export async function registerRoutes(app: Express): Promise<void> {
 
   app.patch("/api/admin/membership-cards/:id", authMiddleware, adminOnly, async (req: AuthRequest, res) => {
     try {
-      const updates: any = { ...req.body, updatedAt: new Date() };
+      const updates: any = { ...req.body };
       if (req.body.paymentStatus === "approved" && req.user?.id) {
-        updates.approvedBy = req.user.id;
+        updates.approvedBy = parseInt(req.user.id);
         updates.approvedAt = new Date();
         updates.isGenerated = true;
       }
-      const card = await MembershipCard.findByIdAndUpdate(req.params.id, updates, { new: true });
+      const card = await storage.updateMembershipCard(parseInt(req.params.id), updates);
       if (!card) return res.status(404).json({ error: "Membership card not found" });
       res.json(card);
     } catch (error) {
@@ -724,20 +688,19 @@ export async function registerRoutes(app: Express): Promise<void> {
 
   app.get("/api/my-membership-card", authMiddleware, async (req: AuthRequest, res) => {
     try {
-      const membership = await Membership.findOne({ userId: req.user?.id });
+      const membership = await storage.getMembershipByUserId(parseInt(req.user?.id || "0"));
       if (!membership) return res.status(404).json({ error: "Membership not found" });
       
-      const card = await MembershipCard.findOne({ membershipId: membership._id }).sort({ createdAt: -1 });
+      const card = await storage.getMembershipCardByMembershipId(membership.id);
       res.json(card);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch membership card" });
     }
   });
 
-  // Contact Inquiry Routes
   app.get("/api/admin/contact-inquiries", authMiddleware, adminOnly, async (req: AuthRequest, res) => {
     try {
-      const inquiries = await ContactInquiry.find().sort({ createdAt: -1 });
+      const inquiries = await storage.getAllContactInquiries();
       res.json(inquiries);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch inquiries" });
@@ -746,8 +709,7 @@ export async function registerRoutes(app: Express): Promise<void> {
 
   app.post("/api/public/contact", async (req, res) => {
     try {
-      const inquiry = new ContactInquiry(req.body);
-      await inquiry.save();
+      await storage.createContactInquiry(req.body);
       res.status(201).json({ success: true, message: "Message sent successfully" });
     } catch (error) {
       res.status(500).json({ error: "Failed to send message" });
@@ -756,7 +718,7 @@ export async function registerRoutes(app: Express): Promise<void> {
 
   app.patch("/api/admin/contact-inquiries/:id", authMiddleware, adminOnly, async (req: AuthRequest, res) => {
     try {
-      const inquiry = await ContactInquiry.findByIdAndUpdate(req.params.id, { ...req.body, updatedAt: new Date() }, { new: true });
+      const inquiry = await storage.updateContactInquiry(parseInt(req.params.id), req.body);
       if (!inquiry) return res.status(404).json({ error: "Inquiry not found" });
       res.json(inquiry);
     } catch (error) {
@@ -764,19 +726,9 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
 
-  app.delete("/api/admin/contact-inquiries/:id", authMiddleware, adminOnly, async (req: AuthRequest, res) => {
-    try {
-      await ContactInquiry.findByIdAndDelete(req.params.id);
-      res.json({ success: true });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to delete inquiry" });
-    }
-  });
-
-  // Page Routes
   app.get("/api/admin/pages", authMiddleware, adminOnly, async (req: AuthRequest, res) => {
     try {
-      const pages = await Page.find().sort({ order: 1 });
+      const pages = await storage.getAllPages();
       res.json(pages);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch pages" });
@@ -785,8 +737,8 @@ export async function registerRoutes(app: Express): Promise<void> {
 
   app.get("/api/public/pages/:slug", async (req, res) => {
     try {
-      const page = await Page.findOne({ slug: req.params.slug, isPublished: true });
-      if (!page) return res.status(404).json({ error: "Page not found" });
+      const page = await storage.getPageBySlug(req.params.slug);
+      if (!page || !page.isPublished) return res.status(404).json({ error: "Page not found" });
       res.json(page);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch page" });
@@ -795,8 +747,7 @@ export async function registerRoutes(app: Express): Promise<void> {
 
   app.post("/api/admin/pages", authMiddleware, adminOnly, async (req: AuthRequest, res) => {
     try {
-      const page = new Page(req.body);
-      await page.save();
+      const page = await storage.createPage(req.body);
       res.status(201).json(page);
     } catch (error) {
       res.status(500).json({ error: "Failed to create page" });
@@ -805,7 +756,7 @@ export async function registerRoutes(app: Express): Promise<void> {
 
   app.patch("/api/admin/pages/:id", authMiddleware, adminOnly, async (req: AuthRequest, res) => {
     try {
-      const page = await Page.findByIdAndUpdate(req.params.id, { ...req.body, updatedAt: new Date() }, { new: true });
+      const page = await storage.updatePage(parseInt(req.params.id), req.body);
       if (!page) return res.status(404).json({ error: "Page not found" });
       res.json(page);
     } catch (error) {
@@ -815,122 +766,44 @@ export async function registerRoutes(app: Express): Promise<void> {
 
   app.delete("/api/admin/pages/:id", authMiddleware, adminOnly, async (req: AuthRequest, res) => {
     try {
-      await Page.findByIdAndDelete(req.params.id);
+      await storage.deletePage(parseInt(req.params.id));
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({ error: "Failed to delete page" });
     }
   });
 
-  // Bulk Roll Number Generation
-  app.post("/api/admin/roll-numbers/bulk", authMiddleware, adminOnly, async (req: AuthRequest, res) => {
-    try {
-      const { studentIds, classNumber } = req.body;
-      
-      if (!studentIds || !Array.isArray(studentIds) || studentIds.length === 0) {
-        return res.status(400).json({ error: "Student IDs required" });
-      }
-
-      let prefix = 100;
-      const classNum = parseInt(classNumber);
-      if (classNum >= 5 && classNum <= 8) prefix = 500;
-      else if (classNum >= 9 && classNum <= 12) prefix = 900;
-
-      const existingCount = await Student.countDocuments({ 
-        rollNumber: { $regex: `^${prefix}` } 
-      });
-
-      const results = [];
-      for (let i = 0; i < studentIds.length; i++) {
-        const rollNumber = `${prefix}${String(existingCount + i + 1).padStart(3, "0")}`;
-        const student = await Student.findByIdAndUpdate(
-          studentIds[i],
-          { rollNumber, updatedAt: new Date() },
-          { new: true }
-        );
-        if (student) results.push({ id: student._id, rollNumber });
-      }
-
-      res.json({ success: true, assigned: results.length, rollNumbers: results });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to generate roll numbers" });
-    }
-  });
-
-  // Bulk Results Upload
-  app.post("/api/admin/results/bulk", authMiddleware, adminOnly, async (req: AuthRequest, res) => {
-    try {
-      const { results: resultsData, examName } = req.body;
-      
-      if (!resultsData || !Array.isArray(resultsData) || resultsData.length === 0) {
-        return res.status(400).json({ error: "Results data required" });
-      }
-
-      const createdResults = [];
-      for (const data of resultsData) {
-        const student = await Student.findOne({ 
-          $or: [
-            { registrationNumber: data.registrationNumber },
-            { rollNumber: data.rollNumber },
-            { _id: data.studentId }
-          ]
-        });
-
-        if (student) {
-          const result = new Result({
-            studentId: student._id,
-            examName: examName || data.examName,
-            marksObtained: data.marksObtained,
-            totalMarks: data.totalMarks || 100,
-            grade: data.grade,
-            rank: data.rank,
-            resultDate: data.resultDate || new Date().toISOString().split("T")[0],
-            isPublished: data.isPublished || false
-          });
-          await result.save();
-          createdResults.push(result);
-        }
-      }
-
-      res.status(201).json({ 
-        success: true, 
-        created: createdResults.length, 
-        total: resultsData.length,
-        results: createdResults 
-      });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to upload results" });
-    }
-  });
-
-  // Fee Payment Record
   app.post("/api/admin/students/:id/payment", authMiddleware, adminOnly, async (req: AuthRequest, res) => {
     try {
       const { amount, paymentDate } = req.body;
-      const student = await Student.findByIdAndUpdate(
-        req.params.id,
-        { 
-          feePaid: true, 
-          feeAmount: amount,
-          paymentDate: paymentDate || new Date(),
-          updatedAt: new Date() 
-        },
-        { new: true }
-      );
+      const student = await storage.updateStudent(parseInt(req.params.id), { 
+        feePaid: true, 
+        feeAmount: amount,
+        paymentDate: paymentDate ? new Date(paymentDate) : new Date(),
+      });
       if (!student) return res.status(404).json({ error: "Student not found" });
-      res.json(student);
+      const { password, ...studentData } = student;
+      res.json(studentData);
     } catch (error) {
       res.status(500).json({ error: "Failed to record payment" });
     }
   });
 
-  // Fee Records Export
   app.get("/api/admin/fee-records", authMiddleware, adminOnly, async (req: AuthRequest, res) => {
     try {
-      const students = await Student.find({ feePaid: true })
-        .select("fullName registrationNumber rollNumber class feeLevel feeAmount paymentDate")
-        .sort({ paymentDate: -1 });
-      res.json(students);
+      const students = await storage.getAllStudents();
+      const feeRecords = students
+        .filter(s => s.feePaid)
+        .map(({ password, ...s }) => ({
+          fullName: s.fullName,
+          registrationNumber: s.registrationNumber,
+          rollNumber: s.rollNumber,
+          class: s.class,
+          feeLevel: s.feeLevel,
+          feeAmount: s.feeAmount,
+          paymentDate: s.paymentDate
+        }));
+      res.json(feeRecords);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch fee records" });
     }

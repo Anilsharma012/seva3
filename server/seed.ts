@@ -1,5 +1,5 @@
 import bcrypt from "bcryptjs";
-import { Admin, Student, MenuItem, AdminSetting, FeeStructure, ContentSection, PaymentConfig } from "./models";
+import { storage } from "./storage";
 
 const defaultMenuItems = [
   { title: "Dashboard", titleHindi: "डैशबोर्ड", path: "/admin/dashboard", iconKey: "LayoutDashboard", order: 1, group: "main" },
@@ -57,10 +57,10 @@ const defaultSettings = [
 
 export async function seedDatabase() {
   try {
-    const adminExists = await Admin.findOne({ email: "admin@mwss.org" });
+    const adminExists = await storage.getAdminByEmail("admin@mwss.org");
     if (!adminExists) {
       const hashedPassword = await bcrypt.hash("Admin@123", 10);
-      await Admin.create({
+      await storage.createAdmin({
         email: "admin@mwss.org",
         password: hashedPassword,
         name: "Super Admin",
@@ -68,11 +68,11 @@ export async function seedDatabase() {
       console.log("Default admin created: admin@mwss.org / Admin@123");
     }
 
-    const studentExists = await Student.findOne({ email: "student@mwss.org" });
+    const studentExists = await storage.getStudentByEmail("student@mwss.org");
     if (!studentExists) {
       const hashedPassword = await bcrypt.hash("Student@123", 10);
       const year = new Date().getFullYear();
-      await Student.create({
+      await storage.createStudent({
         email: "student@mwss.org",
         password: hashedPassword,
         fullName: "Demo Student",
@@ -89,62 +89,47 @@ export async function seedDatabase() {
       console.log("Demo student created: student@mwss.org / Student@123");
     }
 
-    const now = new Date();
+    const existingMenuItems = await storage.getAllMenuItems();
     for (const item of defaultMenuItems) {
-      const exists = await MenuItem.findOne({ path: item.path });
+      const exists = existingMenuItems.find(m => m.path === item.path);
       if (!exists) {
-        await MenuItem.create({
+        await storage.createMenuItem({
           ...item,
           isActive: true,
-          createdAt: now,
-          updatedAt: now
         });
         console.log(`Menu item created: ${item.title}`);
       }
     }
 
     for (const setting of defaultSettings) {
-      const exists = await AdminSetting.findOne({ key: setting.key });
+      const exists = await storage.getAdminSettingByKey(setting.key);
       if (!exists) {
-        await AdminSetting.create({
-          ...setting,
-          createdAt: now,
-          updatedAt: now
-        });
+        await storage.createAdminSetting(setting);
         console.log(`Setting created: ${setting.key}`);
       }
     }
 
-    const feeCount = await FeeStructure.countDocuments();
-    if (feeCount === 0) {
-      const now = new Date();
-      await FeeStructure.insertMany(defaultFeeStructures.map(f => ({
-        ...f,
-        createdAt: now,
-        updatedAt: now
-      })));
+    const existingFeeStructures = await storage.getAllFeeStructures();
+    if (existingFeeStructures.length === 0) {
+      for (const fee of defaultFeeStructures) {
+        await storage.createFeeStructure(fee);
+      }
       console.log("Default fee structures created");
     }
 
-    const contentCount = await ContentSection.countDocuments();
-    if (contentCount === 0) {
-      const now = new Date();
-      await ContentSection.insertMany(defaultContentSections.map(c => ({
-        ...c,
-        createdAt: now,
-        updatedAt: now
-      })));
+    const existingContentSections = await storage.getAllContentSections();
+    if (existingContentSections.length === 0) {
+      for (const content of defaultContentSections) {
+        await storage.createContentSection(content);
+      }
       console.log("Default content sections created");
     }
 
-    const paymentCount = await PaymentConfig.countDocuments();
-    if (paymentCount === 0) {
-      const now = new Date();
-      await PaymentConfig.insertMany(defaultPaymentConfig.map(p => ({
-        ...p,
-        createdAt: now,
-        updatedAt: now
-      })));
+    const existingPaymentConfigs = await storage.getAllPaymentConfigs();
+    if (existingPaymentConfigs.length === 0) {
+      for (const payment of defaultPaymentConfig) {
+        await storage.createPaymentConfig(payment);
+      }
       console.log("Default payment configs created");
     }
 
