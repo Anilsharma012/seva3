@@ -15,6 +15,8 @@ import News from "./pages/News";
 import Contact from "./pages/Contact";
 import Donate from "./pages/Donate";
 import Volunteer from "./pages/Volunteer";
+import VolunteerLogin from "./pages/VolunteerLogin";
+import VolunteerDashboard from "./pages/VolunteerDashboard";
 import Membership from "./pages/Membership";
 import NotFound from "./pages/NotFound";
 import AdminLogin from "./pages/AdminLogin";
@@ -56,6 +58,8 @@ const App = () => (
             <Route path="/contact" element={<Contact />} />
             <Route path="/donate" element={<Donate />} />
             <Route path="/volunteer" element={<Volunteer />} />
+            <Route path="/volunteer/login" element={<VolunteerLogin />} />
+            <Route path="/volunteer/dashboard" element={<VolunteerDashboard />} />
             <Route path="/membership" element={<Membership />} />
             {/* Auth Routes */}
             <Route path="/admin/login" element={<AdminLogin />} />

@@ -3,9 +3,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Users, Heart, BookOpen, Leaf, Stethoscope, HandHeart, GraduationCap, Send, Phone, Loader2, CheckCircle } from "lucide-react";
+import { Label } from "@/components/ui/label";
+import { Users, Heart, BookOpen, Leaf, Stethoscope, HandHeart, GraduationCap, Send, Phone, Loader2, CheckCircle, Lock, Eye, EyeOff, LogIn } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { Link } from "wouter";
 
 const interestAreas = [
   { id: "education", label: "Education / शिक्षा", icon: BookOpen },
@@ -42,10 +44,14 @@ export default function Volunteer() {
     city: "",
     village: "",
     message: "",
+    password: "",
+    confirmPassword: "",
     interests: [] as string[],
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const handleInterestChange = (interestId: string, checked: boolean) => {
     setFormData((prev) => ({
@@ -58,10 +64,26 @@ export default function Volunteer() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!formData.password || formData.password.length < 6) {
+      toast.error("पासवर्ड कम से कम 6 अक्षर का होना चाहिए");
+      return;
+    }
+    
+    if (formData.password !== formData.confirmPassword) {
+      toast.error("पासवर्ड मेल नहीं खाता");
+      return;
+    }
+    
+    if (!formData.email) {
+      toast.error("ईमेल आवश्यक है (Email is required)");
+      return;
+    }
+    
     setIsSubmitting(true);
     
     try {
-      const res = await fetch("/api/public/volunteer-apply", {
+      const res = await fetch("/api/auth/volunteer/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -72,12 +94,13 @@ export default function Volunteer() {
           address: formData.village,
           skills: formData.interests.join(", "),
           message: formData.message,
+          password: formData.password,
         }),
       });
       
       if (res.ok) {
         setIsSubmitted(true);
-        toast.success("धन्यवाद! आपका पंजीकरण सफल रहा। हम जल्द ही आपसे संपर्क करेंगे।");
+        toast.success("धन्यवाद! आपका पंजीकरण सफल रहा। कृपया लॉगिन करें।");
         setFormData({
           name: "",
           email: "",
@@ -85,14 +108,16 @@ export default function Volunteer() {
           city: "",
           village: "",
           message: "",
+          password: "",
+          confirmPassword: "",
           interests: [],
         });
       } else {
         const data = await res.json();
-        toast.error(data.error || "Application submission failed");
+        toast.error(data.error || "पंजीकरण विफल");
       }
     } catch (error) {
-      toast.error("Something went wrong. Please try again.");
+      toast.error("कुछ गलत हो गया। कृपया पुनः प्रयास करें।");
     } finally {
       setIsSubmitting(false);
     }
@@ -266,22 +291,106 @@ export default function Volunteer() {
                 />
               </div>
 
+              {/* Password Fields */}
+              <div className="border-t border-border pt-6">
+                <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
+                  <Lock className="h-5 w-5 text-primary" />
+                  लॉगिन क्रेडेंशियल बनाएं / Create Login Credentials
+                </h3>
+                <p className="text-sm text-muted-foreground mb-4">
+                  पंजीकरण के बाद लॉगिन करने के लिए पासवर्ड बनाएं।
+                </p>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <Label htmlFor="password" className="block text-sm font-medium text-foreground mb-2">
+                      Password / पासवर्ड *
+                    </Label>
+                    <div className="relative">
+                      <Input
+                        id="password"
+                        type={showPassword ? "text" : "password"}
+                        placeholder="कम से कम 6 अक्षर"
+                        value={formData.password}
+                        onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                        required
+                        className="bg-background border-border pr-10"
+                        data-testid="input-password"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      >
+                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    </div>
+                  </div>
+                  <div>
+                    <Label htmlFor="confirmPassword" className="block text-sm font-medium text-foreground mb-2">
+                      Confirm Password / पासवर्ड पुष्टि करें *
+                    </Label>
+                    <div className="relative">
+                      <Input
+                        id="confirmPassword"
+                        type={showConfirmPassword ? "text" : "password"}
+                        placeholder="पासवर्ड दोबारा डालें"
+                        value={formData.confirmPassword}
+                        onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+                        required
+                        className="bg-background border-border pr-10"
+                        data-testid="input-confirm-password"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      >
+                        {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               {isSubmitted ? (
-                <div className="flex items-center gap-2 text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 p-4 rounded-lg">
-                  <CheckCircle className="h-5 w-5" />
-                  <span>धन्यवाद! आपका आवेदन सफलतापूर्वक जमा हो गया है। हम जल्द ही संपर्क करेंगे।</span>
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2 text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 p-4 rounded-lg">
+                    <CheckCircle className="h-5 w-5" />
+                    <div>
+                      <p className="font-medium">धन्यवाद! आपका पंजीकरण सफल रहा।</p>
+                      <p className="text-sm">आपका आवेदन प्रशासक के अनुमोदन के लिए भेज दिया गया है।</p>
+                    </div>
+                  </div>
+                  <Link href="/volunteer/login">
+                    <Button className="w-full" size="lg">
+                      <LogIn className="h-5 w-5 mr-2" />
+                      लॉगिन पेज पर जाएं / Go to Login
+                    </Button>
+                  </Link>
                 </div>
               ) : (
                 <Button
                   type="submit"
                   size="lg"
-                  className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
+                  className="w-full"
                   disabled={isSubmitting}
+                  data-testid="button-submit-volunteer"
                 >
                   {isSubmitting ? <Loader2 className="h-5 w-5 mr-2 animate-spin" /> : <Send className="h-5 w-5 mr-2" />}
                   {isSubmitting ? "Submitting..." : "Submit Registration / पंजीकरण जमा करें"}
                 </Button>
               )}
+
+              {/* Already registered link */}
+              <div className="text-center pt-4 border-t border-border">
+                <p className="text-sm text-muted-foreground">
+                  पहले से पंजीकृत हैं? / Already registered?{" "}
+                  <Link href="/volunteer/login" className="text-primary font-medium hover:underline">
+                    लॉगिन करें / Login
+                  </Link>
+                </p>
+              </div>
             </form>
 
             {/* Contact for queries */}

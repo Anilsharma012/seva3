@@ -6,8 +6,24 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card } from "@/components/ui/card";
 import { toast } from "@/hooks/use-toast";
-import { CreditCard, Download, CheckCircle, User, Mail, Phone, MapPin, IndianRupee, Award, QrCode, Upload, Copy, Building } from "lucide-react";
+import { CreditCard, Download, CheckCircle, User, Mail, Phone, MapPin, IndianRupee, Award, QrCode, Upload, Copy, Building, Clock, Loader2 } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 import logo from "@/assets/logo.jpeg";
+
+interface PaymentConfig {
+  id: number;
+  type: string;
+  name: string;
+  nameHindi: string | null;
+  qrCodeUrl: string | null;
+  upiId: string | null;
+  bankName: string | null;
+  accountNumber: string | null;
+  ifscCode: string | null;
+  accountHolderName: string | null;
+  isActive: boolean;
+  order: number;
+}
 
 interface FormData {
   name: string;
@@ -35,8 +51,13 @@ export default function Membership() {
   const [step, setStep] = useState(1);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [isPendingApproval, setIsPendingApproval] = useState(false);
   const [memberId, setMemberId] = useState("");
   const cardRef = useRef<HTMLDivElement>(null);
+
+  const { data: paymentConfigs, isLoading: isLoadingPayments } = useQuery<PaymentConfig[]>({
+    queryKey: ['/api/public/payment-config/membership'],
+  });
 
   const [formData, setFormData] = useState<FormData>({
     name: "",
@@ -97,25 +118,56 @@ export default function Membership() {
 
     setIsProcessing(true);
     
-    // Simulate verification (in production, this would verify with payment gateway)
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    // Generate membership ID with level prefix
-    const levelPrefix = formData.membershipLevel.toUpperCase().slice(0, 3);
-    const id = `MWSS-${levelPrefix}-${Date.now().toString().slice(-8)}`;
-    setMemberId(id);
-    setIsSuccess(true);
-    setStep(3);
-    setIsProcessing(false);
+    try {
+      const res = await fetch("/api/public/payment-transaction", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: "membership",
+          name: formData.name,
+          fatherName: formData.fatherName,
+          email: formData.email,
+          phone: formData.phone,
+          address: formData.address,
+          city: formData.city,
+          state: formData.state,
+          pincode: formData.pincode,
+          amount: selectedLevel.price,
+          transactionId: formData.transactionId,
+          paymentMethod: "upi",
+          purpose: `${selectedLevel.name} Membership`,
+          membershipLevel: formData.membershipLevel,
+        }),
+      });
 
-    toast({
-      title: "भुगतान सत्यापित!",
-      description: `आपकी सदस्यता सक्रिय हो गई है। ID: ${id}`,
-    });
+      if (res.ok) {
+        setIsPendingApproval(true);
+        setStep(3);
+        toast({
+          title: "आवेदन सफल!",
+          description: "आपका भुगतान अनुरोध प्रशासक को भेज दिया गया है।",
+        });
+      } else {
+        const data = await res.json();
+        toast({
+          title: "त्रुटि",
+          description: data.error || "भुगतान सबमिट करने में विफल",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "त्रुटि",
+        description: "कुछ गलत हो गया। कृपया पुनः प्रयास करें।",
+        variant: "destructive"
+      });
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
-  const copyUPI = () => {
-    navigator.clipboard.writeText("9812676818@ybl");
+  const copyUPI = (upiId: string) => {
+    navigator.clipboard.writeText(upiId);
     toast({ title: "UPI ID कॉपी हो गई!" });
   };
 
@@ -411,64 +463,97 @@ export default function Membership() {
                   </div>
                 </div>
 
-                {/* Payment Methods */}
+                {/* Payment Methods from Admin Config */}
                 <div className="space-y-6">
-                  {/* UPI Payment */}
-                  <div className="bg-secondary/10 rounded-xl p-6">
-                    <h3 className="font-semibold text-foreground mb-4 flex items-center gap-2">
-                      <QrCode className="h-5 w-5 text-secondary" />
-                      UPI से भुगतान करें
-                    </h3>
-                    
-                    <div className="flex flex-col items-center mb-4">
-                      {/* QR Code Placeholder - Replace with actual QR image */}
-                      <div className="w-48 h-48 bg-white rounded-xl p-4 shadow-md mb-4">
-                        <div className="w-full h-full border-2 border-dashed border-primary/50 rounded-lg flex items-center justify-center">
-                          <div className="text-center">
-                            <QrCode className="h-16 w-16 text-primary mx-auto mb-2" />
-                            <p className="text-xs text-muted-foreground">QR Code</p>
-                          </div>
+                  {isLoadingPayments ? (
+                    <div className="flex justify-center py-8">
+                      <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                    </div>
+                  ) : paymentConfigs && paymentConfigs.length > 0 ? (
+                    <>
+                      {paymentConfigs.map((config) => (
+                        <div key={config.id} className="bg-secondary/10 rounded-xl p-6">
+                          <h3 className="font-semibold text-foreground mb-4 flex items-center gap-2">
+                            {config.upiId ? (
+                              <QrCode className="h-5 w-5 text-secondary" />
+                            ) : (
+                              <Building className="h-5 w-5 text-primary" />
+                            )}
+                            {config.nameHindi || config.name}
+                          </h3>
+                          
+                          {config.qrCodeUrl && (
+                            <div className="flex flex-col items-center mb-4">
+                              <div className="w-48 h-48 bg-white rounded-xl p-2 shadow-md mb-4">
+                                <img 
+                                  src={config.qrCodeUrl} 
+                                  alt="QR Code" 
+                                  className="w-full h-full object-contain"
+                                />
+                              </div>
+                            </div>
+                          )}
+                          
+                          {config.upiId && (
+                            <div className="flex flex-col items-center mb-4">
+                              {!config.qrCodeUrl && (
+                                <div className="w-48 h-48 bg-white rounded-xl p-4 shadow-md mb-4">
+                                  <div className="w-full h-full border-2 border-dashed border-primary/50 rounded-lg flex items-center justify-center">
+                                    <div className="text-center">
+                                      <QrCode className="h-16 w-16 text-primary mx-auto mb-2" />
+                                      <p className="text-xs text-muted-foreground">QR Code</p>
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
+                              <div className="flex items-center gap-2 bg-card rounded-lg px-4 py-2 border">
+                                <span className="font-mono text-foreground">{config.upiId}</span>
+                                <Button variant="ghost" size="sm" onClick={() => copyUPI(config.upiId!)}>
+                                  <Copy className="h-4 w-4" />
+                                </Button>
+                              </div>
+                              <p className="text-sm text-muted-foreground text-center mt-2">
+                                PhonePe / Google Pay / Paytm / BHIM से स्कैन करें
+                              </p>
+                            </div>
+                          )}
+                          
+                          {config.bankName && (
+                            <div className="space-y-2 text-sm">
+                              {config.accountHolderName && (
+                                <div className="flex flex-wrap justify-between gap-1">
+                                  <span className="text-muted-foreground">Account Name:</span>
+                                  <span className="font-medium text-foreground">{config.accountHolderName}</span>
+                                </div>
+                              )}
+                              <div className="flex flex-wrap justify-between gap-1">
+                                <span className="text-muted-foreground">Bank:</span>
+                                <span className="font-medium text-foreground">{config.bankName}</span>
+                              </div>
+                              {config.accountNumber && (
+                                <div className="flex flex-wrap justify-between gap-1">
+                                  <span className="text-muted-foreground">Account No:</span>
+                                  <span className="font-medium text-foreground">{config.accountNumber}</span>
+                                </div>
+                              )}
+                              {config.ifscCode && (
+                                <div className="flex flex-wrap justify-between gap-1">
+                                  <span className="text-muted-foreground">IFSC Code:</span>
+                                  <span className="font-medium text-foreground">{config.ifscCode}</span>
+                                </div>
+                              )}
+                            </div>
+                          )}
                         </div>
-                      </div>
-                      
-                      <div className="flex items-center gap-2 bg-card rounded-lg px-4 py-2 border">
-                        <span className="font-mono text-foreground">9812676818@ybl</span>
-                        <Button variant="ghost" size="sm" onClick={copyUPI}>
-                          <Copy className="h-4 w-4" />
-                        </Button>
-                      </div>
+                      ))}
+                    </>
+                  ) : (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <QrCode className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                      <p>भुगतान विवरण अभी उपलब्ध नहीं है।</p>
+                      <p className="text-sm">कृपया संपर्क करें: +91 98126 76818</p>
                     </div>
-
-                    <p className="text-sm text-muted-foreground text-center">
-                      PhonePe / Google Pay / Paytm / BHIM से स्कैन करें
-                    </p>
-                  </div>
-
-                  {/* Bank Transfer */}
-                  <div className="bg-primary/5 rounded-xl p-6">
-                    <h3 className="font-semibold text-foreground mb-4 flex items-center gap-2">
-                      <Building className="h-5 w-5 text-primary" />
-                      बैंक ट्रांसफर
-                    </h3>
-                    <div className="space-y-2 text-sm">
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Account Name:</span>
-                        <span className="font-medium text-foreground">Manav Welfare Seva Society</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Bank:</span>
-                        <span className="font-medium text-foreground">State Bank of India</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Account No:</span>
-                        <span className="font-medium text-foreground">XXXXXXXXXXXX</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">IFSC Code:</span>
-                        <span className="font-medium text-foreground">SBIN0XXXXXX</span>
-                      </div>
-                    </div>
-                  </div>
+                  )}
 
                   {/* Transaction ID Input */}
                   <div className="border-t border-border pt-6">
@@ -484,6 +569,7 @@ export default function Membership() {
                       value={formData.transactionId}
                       onChange={(e) => handleChange('transactionId', e.target.value)}
                       className="text-lg"
+                      data-testid="input-transaction-id"
                     />
                   </div>
 
@@ -492,10 +578,11 @@ export default function Membership() {
                     className="w-full" 
                     size="lg"
                     disabled={isProcessing}
+                    data-testid="button-verify-payment"
                   >
                     {isProcessing ? (
                       <>
-                        <span className="animate-spin mr-2">⏳</span>
+                        <Loader2 className="h-5 w-5 mr-2 animate-spin" />
                         भुगतान सत्यापित हो रहा है...
                       </>
                     ) : (
@@ -506,15 +593,57 @@ export default function Membership() {
                     )}
                   </Button>
 
-                  <Button variant="outline" onClick={() => setStep(1)} className="w-full">
+                  <Button variant="outline" onClick={() => setStep(1)} className="w-full" data-testid="button-go-back">
                     ← वापस जाएं
                   </Button>
                 </div>
               </Card>
             )}
 
-            {/* Step 3: Success & Download */}
-            {step === 3 && isSuccess && (
+            {/* Step 3: Pending Approval */}
+            {step === 3 && isPendingApproval && (
+              <Card className="p-8 shadow-elevated text-center">
+                <div className="w-20 h-20 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center mx-auto mb-6">
+                  <Clock className="h-10 w-10 text-amber-600 dark:text-amber-400" />
+                </div>
+                <h2 className="text-2xl font-bold text-foreground mb-4">
+                  आवेदन जमा हो गया!
+                </h2>
+                <p className="text-lg text-muted-foreground mb-6">
+                  आपका भुगतान अनुरोध प्रशासक को भेज दिया गया है।
+                </p>
+                <div className="bg-amber-50 dark:bg-amber-900/20 rounded-xl p-6 mb-6">
+                  <h3 className="font-semibold text-amber-800 dark:text-amber-200 mb-2">
+                    अगले चरण / Next Steps
+                  </h3>
+                  <ul className="text-left text-amber-700 dark:text-amber-300 space-y-2 text-sm">
+                    <li className="flex items-start gap-2">
+                      <CheckCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                      <span>प्रशासक आपके भुगतान की पुष्टि करेगा (Admin will verify your payment)</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <CheckCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                      <span>अनुमोदन के बाद आपको SMS/Email मिलेगा (You will receive SMS/Email after approval)</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <CheckCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                      <span>सदस्यता कार्ड डाउनलोड कर सकेंगे (You can download membership card)</span>
+                    </li>
+                  </ul>
+                </div>
+                <div className="space-y-3">
+                  <p className="text-sm text-muted-foreground">
+                    Transaction ID: <span className="font-mono font-medium">{formData.transactionId}</span>
+                  </p>
+                  <Button variant="outline" onClick={() => window.location.href = "/"}>
+                    होम पेज पर जाएं
+                  </Button>
+                </div>
+              </Card>
+            )}
+
+            {/* Step 3: Success & Download (after admin approval) */}
+            {step === 3 && isSuccess && !isPendingApproval && (
               <div className="text-center">
                 <div className="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-6">
                   <CheckCircle className="h-12 w-12 text-green-600" />
