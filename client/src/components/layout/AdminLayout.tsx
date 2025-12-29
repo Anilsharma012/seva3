@@ -75,6 +75,7 @@ const fallbackMenuItems = [
   { icon: CreditCard, label: "Fees", href: "/admin/fees" },
   { icon: Users, label: "Memberships", href: "/admin/memberships" },
   { icon: Heart, label: "Volunteers", href: "/admin/volunteers" },
+  { icon: Receipt, label: "Transactions", href: "/admin/transactions" },
   { icon: FileEdit, label: "Content", href: "/admin/content" },
   { icon: Layout, label: "Pages", href: "/admin/pages" },
   { icon: Wallet, label: "Payments", href: "/admin/payments" },

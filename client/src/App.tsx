@@ -36,6 +36,7 @@ import AdminContent from "./pages/admin/AdminContent";
 import AdminPages from "./pages/admin/AdminPages";
 import AdminPayments from "./pages/admin/AdminPayments";
 import AdminContactInquiries from "./pages/admin/AdminContactInquiries";
+import AdminTransactions from "./pages/admin/AdminTransactions";
 
 
 const App = () => (
@@ -79,6 +80,7 @@ const App = () => (
             <Route path="/admin/content" element={<AdminContent />} />
             <Route path="/admin/pages" element={<AdminPages />} />
             <Route path="/admin/payments" element={<AdminPayments />} />
+            <Route path="/admin/transactions" element={<AdminTransactions />} />
             <Route path="/admin/contact-inquiries" element={<AdminContactInquiries />} />
             <Route path="/admin/settings" element={<AdminSettings />} />
             <Route path="*" element={<NotFound />} />
