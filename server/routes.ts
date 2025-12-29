@@ -62,12 +62,14 @@ export async function registerRoutes(app: Express): Promise<void> {
         return res.status(401).json({ error: "Invalid credentials" });
       }
       
-      // Check if student has approved payment transaction
-      const transactions = await storage.getPaymentTransactionsByEmail(email);
-      const hasApprovedPayment = transactions.some(t => t.status === "approved" && (t.type === "fee" || t.type === "membership"));
-      
-      if (!student.feePaid && !hasApprovedPayment) {
-        return res.status(403).json({ error: "Payment pending approval. Please wait for admin approval. / भुगतान स्वीकृति लंबित है।" });
+      // Check if student has approved payment (either feePaid flag or approved transaction)
+      if (!student.feePaid) {
+        const transactions = await storage.getPaymentTransactionsByEmail(email);
+        const hasApprovedPayment = transactions.some(t => t.status === "approved" && (t.type === "fee" || t.type === "membership"));
+        
+        if (!hasApprovedPayment) {
+          return res.status(403).json({ error: "Payment pending approval. Please wait for admin approval. / भुगतान स्वीकृति लंबित है।" });
+        }
       }
       
       const token = generateToken({ id: student.id.toString(), email: student.email, role: "student", name: student.fullName });
