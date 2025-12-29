@@ -6,9 +6,19 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "@/hooks/use-toast";
 import { 
   Users, Mail, Phone, MapPin, Clock, CheckCircle, XCircle, 
-  LogOut, User, Award, Calendar, AlertCircle, Loader2 
+  LogOut, User, Award, Calendar, AlertCircle, Loader2, Receipt 
 } from "lucide-react";
 import { useLocation, Link } from "wouter";
+
+interface TransactionData {
+  id: number;
+  type: string;
+  amount: number;
+  transactionId: string;
+  status: string;
+  createdAt: string;
+  purpose?: string;
+}
 
 interface VolunteerData {
   id: number;
@@ -27,6 +37,7 @@ interface VolunteerData {
 export default function VolunteerDashboard() {
   const [, setLocation] = useLocation();
   const [volunteer, setVolunteer] = useState<VolunteerData | null>(null);
+  const [transactions, setTransactions] = useState<TransactionData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -41,6 +52,7 @@ export default function VolunteerDashboard() {
     try {
       const parsedUser = JSON.parse(userData);
       setVolunteer(parsedUser);
+      fetchTransactions(token);
     } catch (error) {
       localStorage.removeItem("volunteer_token");
       localStorage.removeItem("volunteer_user");
@@ -49,6 +61,22 @@ export default function VolunteerDashboard() {
 
     setIsLoading(false);
   }, [setLocation]);
+
+  const fetchTransactions = async (token: string) => {
+    if (!token) return;
+    
+    try {
+      const res = await fetch("/api/my-transactions", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setTransactions(data);
+      }
+    } catch (error) {
+      console.error("Error fetching transactions:", error);
+    }
+  };
 
   const handleLogout = () => {
     localStorage.removeItem("volunteer_token");
@@ -224,6 +252,45 @@ export default function VolunteerDashboard() {
                     </div>
                   )}
                 </div>
+              </Card>
+
+              {/* Transaction History */}
+              <Card className="p-6">
+                <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
+                  <Receipt className="h-5 w-5 text-primary" />
+                  Transaction History / लेनदेन इतिहास
+                </h3>
+                {transactions.length > 0 ? (
+                  <div className="space-y-3">
+                    {transactions.map((t) => (
+                      <div key={t.id} className="p-4 bg-muted rounded-lg" data-testid={`card-transaction-${t.id}`}>
+                        <div className="flex flex-wrap justify-between items-center gap-4">
+                          <div>
+                            <p className="font-medium text-foreground">{t.purpose || t.type}</p>
+                            <p className="text-sm text-muted-foreground">
+                              UTR: <span className="font-mono">{t.transactionId}</span>
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {new Date(t.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-4">
+                            <span className="text-lg font-bold text-primary">Rs.{t.amount}</span>
+                            <Badge variant={t.status === 'approved' ? 'default' : t.status === 'pending' ? 'secondary' : 'destructive'}>
+                              {t.status === 'approved' ? 'Approved' : t.status === 'pending' ? 'Pending' : 'Rejected'}
+                            </Badge>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Receipt className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <p>No transactions found</p>
+                    <p className="text-sm">कोई लेनदेन नहीं मिला</p>
+                  </div>
+                )}
               </Card>
 
               {/* Contact Support */}

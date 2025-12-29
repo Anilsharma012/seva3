@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { GraduationCap, FileText, Award, Receipt, LogOut, Download, IdCard, Users, Hash, Loader2 } from "lucide-react";
 
 interface StudentData {
-  _id: string;
+  id: number;
   registrationNumber: string;
   class: string;
   rollNumber?: string;
@@ -22,7 +22,7 @@ interface StudentData {
 }
 
 interface ResultData {
-  _id: string;
+  id: number;
   examName: string;
   marksObtained?: number;
   totalMarks: number;
@@ -31,14 +31,14 @@ interface ResultData {
 }
 
 interface AdmitCardData {
-  _id: string;
+  id: number;
   examName: string;
   fileUrl: string;
   fileName: string;
 }
 
 interface MembershipCardData {
-  _id: string;
+  id: number;
   cardNumber: string;
   memberName: string;
   memberPhoto?: string;
@@ -48,6 +48,16 @@ interface MembershipCardData {
   isGenerated: boolean;
 }
 
+interface TransactionData {
+  id: number;
+  type: string;
+  amount: number;
+  transactionId: string;
+  status: string;
+  createdAt: string;
+  purpose?: string;
+}
+
 export default function StudentDashboard() {
   const { user, logout, isStudent, isLoading: authLoading } = useAuth();
   const navigate = useNavigate();
@@ -55,6 +65,7 @@ export default function StudentDashboard() {
   const [results, setResults] = useState<ResultData[]>([]);
   const [admitCards, setAdmitCards] = useState<AdmitCardData[]>([]);
   const [membershipCard, setMembershipCard] = useState<MembershipCardData | null>(null);
+  const [transactions, setTransactions] = useState<TransactionData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("dashboard");
 
@@ -67,8 +78,26 @@ export default function StudentDashboard() {
     if (user?.id) {
       fetchStudentData();
       fetchMembershipCard();
+      fetchTransactions();
     }
   }, [isStudent, user, authLoading, navigate]);
+
+  const fetchTransactions = async () => {
+    const token = localStorage.getItem("auth_token");
+    if (!token) return;
+    
+    try {
+      const res = await fetch("/api/my-transactions", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setTransactions(data);
+      }
+    } catch (error) {
+      console.error("Error fetching transactions:", error);
+    }
+  };
 
   const fetchStudentData = async () => {
     try {
@@ -120,59 +149,64 @@ export default function StudentDashboard() {
   <meta charset="UTF-8">
   <title>Admit Card - ${student?.fullName}</title>
   <style>
-    body { font-family: Arial, sans-serif; padding: 20px; max-width: 800px; margin: 0 auto; }
-    .header { text-align: center; border-bottom: 2px solid #c00; padding-bottom: 15px; margin-bottom: 20px; }
+    body { font-family: Arial, sans-serif; padding: 20px; max-width: 900px; margin: 0 auto; }
+    .header { text-align: center; border-bottom: 3px solid #c00; padding-bottom: 15px; margin-bottom: 20px; }
     .title { color: #c00; font-size: 24px; font-weight: bold; margin: 10px 0; }
     .subtitle { color: #666; font-size: 14px; }
-    .admit-title { background: #c00; color: white; padding: 10px; text-align: center; font-size: 18px; font-weight: bold; margin: 20px 0; }
+    .admit-title { background: #c00; color: white; padding: 12px; text-align: center; font-size: 20px; font-weight: bold; margin: 20px 0; }
     .details { display: flex; gap: 30px; margin: 20px 0; }
     .details-left { flex: 1; }
     .row { display: flex; margin: 10px 0; }
-    .label { font-weight: bold; width: 150px; }
+    .label { font-weight: bold; width: 160px; }
     .value { flex: 1; }
-    .exam-info { background: #f5f5f5; padding: 15px; margin: 20px 0; }
+    .exam-info { background: #f5f5f5; padding: 15px; margin: 20px 0; border-radius: 8px; }
     .exam-info h3 { margin: 0 0 10px 0; color: #333; }
-    .instructions { margin-top: 20px; padding: 15px; border: 1px solid #ddd; }
-    .instructions h3 { margin: 0 0 10px 0; }
-    .instructions ul { margin: 0; padding-left: 20px; }
-    .signature { margin-top: 40px; text-align: right; }
-    @media print { body { padding: 0; } }
+    .terms-section { margin-top: 25px; border: 2px solid #c00; padding: 20px; border-radius: 8px; }
+    .terms-header { background: #c00; color: white; padding: 10px 15px; margin: -20px -20px 15px -20px; border-radius: 6px 6px 0 0; font-weight: bold; font-size: 16px; }
+    .signature { margin-top: 30px; text-align: right; }
+    @media print { body { padding: 10px; } .terms-section { page-break-inside: avoid; } }
   </style>
 </head>
 <body>
   <div class="header">
-    <div class="title">Manav Welfare Seva Society</div>
-    <div class="subtitle">Reg. No: 01215 | Phone: +91 98126 76818</div>
+    <div class="title">Manav Welfare Seva Society / मानव वेलफेयर सेवा सोसाइटी</div>
+    <div class="subtitle">Reg. No: 01215 | Phone: +91 98126 76818 | Bhuna, Haryana</div>
   </div>
-  <div class="admit-title">ADMIT CARD</div>
+  <div class="admit-title">ADMIT CARD / प्रवेश पत्र</div>
   <div class="details">
     <div class="details-left">
-      <div class="row"><span class="label">Roll Number:</span><span class="value">${student?.rollNumber || 'N/A'}</span></div>
-      <div class="row"><span class="label">Registration No:</span><span class="value">${student?.registrationNumber}</span></div>
-      <div class="row"><span class="label">Student Name:</span><span class="value">${student?.fullName}</span></div>
-      <div class="row"><span class="label">Father's Name:</span><span class="value">${student?.fatherName || 'N/A'}</span></div>
-      <div class="row"><span class="label">Class:</span><span class="value">${student?.class}</span></div>
+      <div class="row"><span class="label">Roll Number / रोल नंबर:</span><span class="value">${student?.rollNumber || 'N/A'}</span></div>
+      <div class="row"><span class="label">Registration No / पंजीकरण:</span><span class="value">${student?.registrationNumber}</span></div>
+      <div class="row"><span class="label">Student Name / नाम:</span><span class="value">${student?.fullName}</span></div>
+      <div class="row"><span class="label">Father's Name / पिता:</span><span class="value">${student?.fatherName || 'N/A'}</span></div>
+      <div class="row"><span class="label">Class / कक्षा:</span><span class="value">${student?.class}</span></div>
     </div>
   </div>
   <div class="exam-info">
-    <h3>Exam Details</h3>
-    <div class="row"><span class="label">Exam Name:</span><span class="value">${admitData?.examName || card.examName}</span></div>
-    <div class="row"><span class="label">Exam Date:</span><span class="value">${admitData?.examDate || 'To be announced'}</span></div>
-    <div class="row"><span class="label">Exam Time:</span><span class="value">${admitData?.examTime || 'To be announced'}</span></div>
-    <div class="row"><span class="label">Exam Center:</span><span class="value">${admitData?.examCenter || 'To be announced'}</span></div>
+    <h3>Exam Details / परीक्षा विवरण</h3>
+    <div class="row"><span class="label">Exam Name / परीक्षा:</span><span class="value">${admitData?.examName || card.examName}</span></div>
+    <div class="row"><span class="label">Date / तारीख:</span><span class="value">${admitData?.examDate || 'To be announced / घोषित किया जाएगा'}</span></div>
+    <div class="row"><span class="label">Time / समय:</span><span class="value">${admitData?.examTime || 'To be announced / घोषित किया जाएगा'}</span></div>
+    <div class="row"><span class="label">Center / केंद्र:</span><span class="value">${admitData?.examCenter || 'To be announced / घोषित किया जाएगा'}</span></div>
   </div>
-  <div class="instructions">
-    <h3>Instructions:</h3>
-    <ul>
-      <li>Bring this admit card to the examination center</li>
-      <li>Bring a valid photo ID</li>
-      <li>Arrive 30 minutes before exam time</li>
-      <li>Electronic devices are not allowed</li>
-    </ul>
+  <div class="terms-section">
+    <div class="terms-header">Terms & Conditions / नियम एवं शर्तें</div>
+    <ol style="margin: 0; padding-left: 20px; font-size: 11px; line-height: 1.6;">
+      <li style="margin-bottom: 6px;">Bring this admit card to the examination center. / यह प्रवेश पत्र परीक्षा केंद्र पर लाएं।</li>
+      <li style="margin-bottom: 6px;">Bring a valid photo ID (Aadhar/School ID). / वैध फोटो पहचान पत्र (आधार/स्कूल आईडी) लाएं।</li>
+      <li style="margin-bottom: 6px;">Arrive 30 minutes before exam time. / परीक्षा समय से 30 मिनट पहले पहुंचें।</li>
+      <li style="margin-bottom: 6px;">Electronic devices are strictly prohibited. / इलेक्ट्रॉनिक उपकरण सख्त वर्जित हैं।</li>
+      <li style="margin-bottom: 6px;">No candidate will be allowed after exam starts. / परीक्षा शुरू होने के बाद प्रवेश नहीं मिलेगा।</li>
+      <li style="margin-bottom: 6px;">Maintain silence and discipline in exam hall. / परीक्षा हॉल में शांति और अनुशासन बनाए रखें।</li>
+      <li style="margin-bottom: 6px;">Use of unfair means will result in disqualification. / अनुचित साधनों का प्रयोग अयोग्यता का कारण बनेगा।</li>
+      <li style="margin-bottom: 6px;">Follow all instructions given by invigilators. / निरीक्षकों द्वारा दिए गए सभी निर्देशों का पालन करें।</li>
+      <li style="margin-bottom: 6px;">Do not leave exam hall without permission. / बिना अनुमति परीक्षा हॉल न छोड़ें।</li>
+      <li style="margin-bottom: 6px;">Society's decision on all matters is final. / सभी मामलों में सोसाइटी का निर्णय अंतिम होगा।</li>
+    </ol>
   </div>
   <div class="signature">
     <p>_____________________</p>
-    <p>Authorized Signature</p>
+    <p>Authorized Signature / अधिकृत हस्ताक्षर</p>
   </div>
 </body>
 </html>`;
@@ -217,6 +251,7 @@ export default function StudentDashboard() {
     { id: "roll-number", icon: Hash, label: "Roll Number", labelHi: "रोल नंबर" },
     { id: "membership", icon: Users, label: "Membership", labelHi: "सदस्यता" },
     { id: "results", icon: Award, label: "Results", labelHi: "परिणाम" },
+    { id: "transactions", icon: Receipt, label: "Transactions", labelHi: "लेनदेन" },
   ];
 
   return (
@@ -461,7 +496,7 @@ export default function StudentDashboard() {
                   {results.length > 0 ? (
                     <div className="space-y-3">
                       {results.map((r) => (
-                        <div key={r._id} className="p-4 bg-muted rounded-lg" data-testid={`card-result-${r._id}`}>
+                        <div key={r.id} className="p-4 bg-muted rounded-lg" data-testid={`card-result-${r.id}`}>
                           <div className="flex flex-wrap justify-between items-center gap-4">
                             <div>
                               <p className="font-medium">{r.examName}</p>
@@ -482,6 +517,50 @@ export default function StudentDashboard() {
                       <Award className="h-12 w-12 mx-auto mb-4 opacity-50" />
                       <p>No results available yet</p>
                       <p className="text-sm">अभी कोई परिणाम उपलब्ध नहीं है</p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
+            {activeTab === "transactions" && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Receipt className="text-blue-600" />
+                    Transaction History / लेनदेन इतिहास
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {transactions.length > 0 ? (
+                    <div className="space-y-3">
+                      {transactions.map((t) => (
+                        <div key={t.id} className="p-4 bg-muted rounded-lg" data-testid={`card-transaction-${t.id}`}>
+                          <div className="flex flex-wrap justify-between items-center gap-4">
+                            <div>
+                              <p className="font-medium">{t.purpose || t.type}</p>
+                              <p className="text-sm text-muted-foreground">
+                                UTR/Transaction ID: <span className="font-mono">{t.transactionId}</span>
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                {new Date(t.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-4">
+                              <span className="text-lg font-bold text-primary">Rs.{t.amount}</span>
+                              <Badge variant={t.status === 'approved' ? 'default' : t.status === 'pending' ? 'secondary' : 'destructive'}>
+                                {t.status === 'approved' ? 'Approved / स्वीकृत' : t.status === 'pending' ? 'Pending / लंबित' : 'Rejected / अस्वीकृत'}
+                              </Badge>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <Receipt className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                      <p>No transactions found</p>
+                      <p className="text-sm">कोई लेनदेन नहीं मिला</p>
                     </div>
                   )}
                 </CardContent>

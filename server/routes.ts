@@ -360,6 +360,28 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
 
+  app.get("/api/my-transactions", authMiddleware, async (req: AuthRequest, res) => {
+    try {
+      let email = "";
+      
+      if (req.user?.role === "student") {
+        const student = await storage.getStudentById(parseInt(req.user.id));
+        if (student) email = student.email;
+      } else if (req.user?.role === "volunteer") {
+        const volunteer = await storage.getVolunteerAccountById(parseInt(req.user.id));
+        if (volunteer) email = volunteer.email;
+      }
+      
+      if (!email) return res.json([]);
+      
+      const transactions = await storage.getPaymentTransactionsByEmail(email);
+      res.json(transactions);
+    } catch (error) {
+      console.error("Error fetching user transactions:", error);
+      res.status(500).json({ error: "Failed to fetch transactions" });
+    }
+  });
+
   app.get("/api/admin/menu", authMiddleware, adminOnly, async (req: AuthRequest, res) => {
     try {
       const menuItems = await storage.getActiveMenuItems();

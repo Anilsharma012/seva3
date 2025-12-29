@@ -103,6 +103,7 @@ export interface IStorage {
   getPaymentTransactionByTransactionId(transactionId: string): Promise<PaymentTransaction | undefined>;
   getAllPaymentTransactions(): Promise<PaymentTransaction[]>;
   getPaymentTransactionsByType(type: string): Promise<PaymentTransaction[]>;
+  getPaymentTransactionsByEmail(email: string): Promise<PaymentTransaction[]>;
   getPendingPaymentTransactions(): Promise<PaymentTransaction[]>;
   updatePaymentTransaction(id: number, data: Partial<InsertPaymentTransaction>): Promise<PaymentTransaction | undefined>;
 
@@ -462,6 +463,13 @@ export class DatabaseStorage implements IStorage {
   async getPaymentTransactionsByType(type: string): Promise<PaymentTransaction[]> {
     return await db.query.paymentTransactions.findMany({
       where: eq(paymentTransactions.type, type as any),
+      orderBy: [desc(paymentTransactions.createdAt)]
+    });
+  }
+
+  async getPaymentTransactionsByEmail(email: string): Promise<PaymentTransaction[]> {
+    return await db.query.paymentTransactions.findMany({
+      where: eq(paymentTransactions.email, email),
       orderBy: [desc(paymentTransactions.createdAt)]
     });
   }
