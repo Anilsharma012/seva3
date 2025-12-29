@@ -8,34 +8,28 @@ This is a full-stack education management system for Manav Welfare Seva Society,
 - **Demo Student Login**: student@mwss.org / Student@123
 
 ## Recent Changes
-- **December 2024**: Migrated from Supabase/PostgreSQL to MongoDB Atlas
-- All frontend pages updated to use REST API endpoints instead of Supabase client
-- JWT-based authentication implemented with role-based access control
-- Replaced Supabase AuthContext with custom authentication using localStorage
-- Added database-driven admin sidebar menu (MenuItem schema)
-- Added configurable admin settings/feature toggles (AdminSetting schema)
-- Admin can now manage menu items and settings from Settings page
-- Menu changes reflect immediately via React Query cache invalidation
-- Added Payment Configuration management (QR codes, UPI IDs, bank details)
-- Added Content Section management (About Us, Services, Gallery, Events, Join Us, Contact)
-- Added Volunteer Application management with status tracking
-- Added Fee Structure management with configurable levels
-- Added Membership Card generation with payment approval workflow
-- Added Custom Page management for dynamic pages
-- Added Bulk Roll Number generation
-- Added Bulk Results upload with CSV support
-- **December 22, 2024**: Fixed critical frontend-backend integration issues
-  - Fixed apiRequest to include Authorization header for all mutations (resolved 401 errors)
-  - Fixed App.tsx to use configured queryClient with auth headers for all queries
-  - Contact form now submits to backend with loading/success states
-  - Volunteer form now submits to backend with proper field mapping
-  - Added ContactInquiry model and API endpoints for contact submissions
-  - Created Admin Contact Inquiries management page (/admin/contact-inquiries)
+- **December 29, 2024**: Migrated from MongoDB to PostgreSQL with Drizzle ORM
+  - Replaced Mongoose schemas with Drizzle PostgreSQL schemas in shared/schema.ts
+  - Implemented storage interface layer in server/storage.ts for database abstraction
+  - All API routes now use the storage interface for database operations
+  - Removed MongoDB models folder and Supabase code
+  - Database seeding updated to use PostgreSQL storage interface
+- **December 2024**: Previous MongoDB Atlas implementation
+- JWT-based authentication with role-based access control
+- Database-driven admin sidebar menu (MenuItem schema)
+- Configurable admin settings/feature toggles (AdminSetting schema)
+- Payment Configuration management (QR codes, UPI IDs, bank details)
+- Content Section management (About Us, Services, Gallery, Events, Join Us, Contact)
+- Volunteer Application management with status tracking
+- Fee Structure management with configurable levels
+- Membership Card generation with payment approval workflow
+- Custom Page management for dynamic pages
+- Bulk Roll Number generation and Bulk Results upload with CSV support
 
 ## Tech Stack
 - **Frontend**: React + Vite + TypeScript + TailwindCSS + shadcn/ui
 - **Backend**: Express.js + TypeScript
-- **Database**: MongoDB Atlas (Mongoose ODM)
+- **Database**: PostgreSQL with Drizzle ORM
 - **Authentication**: JWT tokens with bcrypt password hashing
 
 ## Project Structure
@@ -48,13 +42,14 @@ client/
     hooks/           # Custom React hooks
     lib/             # Utility functions
 server/
-  models/           # Mongoose schemas (Admin, Student, Result, AdmitCard, Membership)
   routes.ts         # Express API routes
+  storage.ts        # Database storage interface (PostgreSQL)
+  db.ts             # PostgreSQL connection (Drizzle)
+  seed.ts           # Database seeding
   middleware/       # Auth middleware
-  db.ts             # MongoDB connection
   index.ts          # Server entry point
 shared/
-  schema.ts         # Shared types (legacy Drizzle schemas)
+  schema.ts         # Drizzle PostgreSQL schemas and types
 ```
 
 ## API Endpoints
@@ -149,66 +144,67 @@ shared/
 - `POST /api/admin/students/:id/payment` - Record fee payment
 - `GET /api/admin/fee-records` - Export fee payment records
 
-## Database Schema (MongoDB)
+## Database Schema (PostgreSQL with Drizzle)
 
-### Student
-- email, password (hashed), fullName, fatherName, motherName
+### students
+- id (serial), email, password (hashed), fullName, fatherName, motherName
 - phone, address, city, dateOfBirth, gender
 - registrationNumber (auto-generated: MWSS{year}{4-digit})
-- class, rollNumber, feeLevel, feeAmount, feePaid
+- class, rollNumber, feeLevel, feeAmount, feePaid, isActive
 
-### Admin
-- email, password (hashed), name
+### admins
+- id (serial), email, password (hashed), name
 
-### Result
-- studentId (ref), examName, resultDate, totalMarks, marksObtained, grade, rank
+### results
+- id (serial), studentId (ref), examName, resultDate, totalMarks, marksObtained, grade, rank
 
-### AdmitCard
-- studentId (ref), examName, fileUrl, fileName
+### admit_cards
+- id (serial), studentId (ref), examName, fileUrl, fileName
 
-### Membership
-- memberName, memberPhone, memberEmail, memberAddress
+### memberships
+- id (serial), memberName, memberPhone, memberEmail, memberAddress
 - membershipType, membershipNumber, isActive, validFrom, validUntil
 
-### MenuItem (Admin Configuration)
-- title, titleHindi, path, iconKey, order, isActive, group
-- Used to dynamically populate admin sidebar menu
+### menu_items (Admin Configuration)
+- id (serial), title, titleHindi, path, iconKey, order, isActive, group
 
-### AdminSetting (Feature Toggles)
-- key (unique), label, value, category, type, options
-- Categories: general, fees, registration, exams, notifications
-- Used to configure feature toggles and settings
+### admin_settings (Feature Toggles)
+- id (serial), key (unique), label, value, category, type, options
 
-### PaymentConfig
-- type (donation, fee, membership, general)
+### payment_configs
+- id (serial), type (donation, fee, membership, general)
 - name, nameHindi, qrCodeUrl, upiId
 - bankName, accountNumber, ifscCode, accountHolderName
 - isActive, order
 
-### ContentSection
-- sectionKey (about, services, gallery, events, joinUs, contact, volunteer)
+### content_sections
+- id (serial), sectionKey (about, services, gallery, events, joinUs, contact, volunteer)
 - title, titleHindi, content, contentHindi, imageUrls
 - isActive, order, metadata
 
-### VolunteerApplication
-- fullName, email, phone, address, city
+### volunteer_applications
+- id (serial), fullName, email, phone, address, city
 - occupation, skills, availability, message
 - status (pending, approved, rejected), adminNotes
 
-### FeeStructure
-- name, nameHindi, level, amount, description, isActive
+### fee_structures
+- id (serial), name, nameHindi, level, amount, description, isActive
 
-### MembershipCard
-- membershipId (ref), cardNumber (auto-generated: MC{year}{4-digit})
+### membership_cards
+- id (serial), membershipId (ref), cardNumber (auto-generated: MC{year}{4-digit})
 - memberName, memberPhoto, validFrom, validUntil
 - cardImageUrl, isGenerated
 - paymentStatus (pending, paid, approved)
-- approvedBy (ref Admin), approvedAt
+- approvedBy (ref admins), approvedAt
 
-### Page (Custom Pages)
-- slug (unique), title, titleHindi
+### pages (Custom Pages)
+- id (serial), slug (unique), title, titleHindi
 - content, contentHindi, metaDescription
 - isPublished, order
+
+### contact_inquiries
+- id (serial), name, email, phone, subject, message
+- status (pending, responded, closed)
 
 ## Fee Levels
 - Village Level: Rs.99
@@ -222,7 +218,7 @@ shared/
 - Classes 9-12: Prefix 900xxx
 
 ## Environment Variables
-- `MONGODB_URI` - MongoDB Atlas connection string
+- `DATABASE_URL` - PostgreSQL connection string (provided by Replit)
 - `JWT_SECRET` - Secret for JWT token signing
 
 ## Running the Application
@@ -230,6 +226,12 @@ shared/
 npm run dev
 ```
 Server runs on port 5000 serving both frontend and API.
+
+## Database Commands
+```bash
+npm run db:push     # Push schema changes to database
+npm run db:studio   # Open Drizzle Studio for database management
+```
 
 ## Routes
 - `/` - Home page
