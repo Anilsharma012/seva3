@@ -11,7 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Award, Plus, Search, Upload, Loader2, FileSpreadsheet } from "lucide-react";
 
 interface Student {
-  _id: string;
+  id: number;
   registrationNumber: string;
   rollNumber?: string;
   fullName: string;
@@ -19,14 +19,14 @@ interface Student {
 }
 
 interface Result {
-  _id: string;
+  id: number;
   examName: string;
   resultDate?: string;
   totalMarks: number;
   marksObtained?: number;
   rank?: number;
   studentId: {
-    _id: string;
+    id: number;
     fullName: string;
     rollNumber?: string;
     registrationNumber: string;
@@ -96,7 +96,7 @@ export default function AdminResults() {
   const handleSubmit = async () => {
     try {
       const token = localStorage.getItem("auth_token");
-      const student = students.find(s => s._id === formData.studentId);
+      const student = students.find(s => s.id === formData.studentId);
       if (!student) return;
 
       const total = parseInt(formData.totalMarks);
@@ -185,7 +185,7 @@ export default function AdminResults() {
               Authorization: `Bearer ${token}` 
             },
             body: JSON.stringify({
-              studentId: student._id,
+              studentId: student.id,
               examName: bulkFormData.examName,
               resultDate: bulkFormData.examDate || null,
               totalMarks: parseInt(bulkFormData.totalMarks),
@@ -356,7 +356,7 @@ export default function AdminResults() {
                       <SelectTrigger data-testid="select-student"><SelectValue placeholder="छात्र चुनें" /></SelectTrigger>
                       <SelectContent>
                         {filteredStudents.map(s => (
-                          <SelectItem key={s._id} value={s._id}>
+                          <SelectItem key={s.id} value={s.id}>
                             {s.fullName} (Roll: {s.rollNumber}, Class: {s.class})
                           </SelectItem>
                         ))}
@@ -492,7 +492,7 @@ export default function AdminResults() {
                         ? ((result.marksObtained / result.totalMarks) * 100).toFixed(2)
                         : "0";
                       return (
-                        <TableRow key={result._id} data-testid={`row-result-${result._id}`}>
+                        <TableRow key={result.id} data-testid={`row-result-${result.id}`}>
                           <TableCell className="font-medium">{result.studentId?.rollNumber}</TableCell>
                           <TableCell>{result.studentId?.fullName}</TableCell>
                           <TableCell>Class {result.studentId?.class}</TableCell>

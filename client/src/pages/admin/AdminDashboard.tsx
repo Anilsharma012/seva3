@@ -156,7 +156,7 @@ export default function AdminDashboard() {
             ) : (
               <div className="space-y-3">
                 {recentStudents.map((student) => (
-                  <div key={student._id} className="flex items-center justify-between gap-2 p-3 bg-muted rounded-lg" data-testid={`card-student-${student._id}`}>
+                  <div key={student.id} className="flex items-center justify-between gap-2 p-3 bg-muted rounded-lg" data-testid={`card-student-${student.id}`}>
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-full bg-secondary/20 flex items-center justify-center">
                         <GraduationCap className="h-5 w-5 text-secondary" />

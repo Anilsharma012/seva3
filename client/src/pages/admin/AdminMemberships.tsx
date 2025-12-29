@@ -19,7 +19,7 @@ const membershipLevels = [
 ];
 
 interface Membership {
-  _id: string;
+  id: number;
   memberName: string;
   memberPhone: string;
   memberEmail?: string;
@@ -114,7 +114,7 @@ export default function AdminMemberships() {
     }
   };
 
-  const handleVerify = async (id: string) => {
+  const handleVerify = async (id: number) => {
     try {
       const token = localStorage.getItem("auth_token");
       const res = await fetch(`/api/memberships/${id}`, {
@@ -252,7 +252,7 @@ export default function AdminMemberships() {
                     </TableRow>
                   ) : (
                     filteredMemberships.map((m) => (
-                      <TableRow key={m._id} data-testid={`row-membership-${m._id}`}>
+                      <TableRow key={m.id} data-testid={`row-membership-${m.id}`}>
                         <TableCell className="font-medium">{m.membershipNumber}</TableCell>
                         <TableCell>{m.memberName}</TableCell>
                         <TableCell>{m.memberPhone}</TableCell>
@@ -268,12 +268,12 @@ export default function AdminMemberships() {
                         <TableCell>
                           <div className="flex gap-2">
                             {!m.isActive && (
-                              <Button size="sm" variant="outline" onClick={() => handleVerify(m._id)} data-testid={`button-verify-${m._id}`}>
+                              <Button size="sm" variant="outline" onClick={() => handleVerify(m.id)} data-testid={`button-verify-${m.id}`}>
                                 <Check className="h-4 w-4 mr-1" />
                                 Verify
                               </Button>
                             )}
-                            <Button size="sm" variant="ghost" data-testid={`button-download-${m._id}`}>
+                            <Button size="sm" variant="ghost" data-testid={`button-download-${m.id}`}>
                               <Download className="h-4 w-4" />
                             </Button>
                           </div>

@@ -15,7 +15,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { Loader2, Plus, Edit, Trash2, ExternalLink } from "lucide-react";
 
 interface Page {
-  _id: string;
+  id: number;
   slug: string;
   title: string;
   titleHindi?: string;
@@ -64,7 +64,7 @@ export default function AdminPages() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: typeof form }) => {
+    mutationFn: async ({ id, data }: { id: number; data: typeof form }) => {
       return apiRequest("PATCH", `/api/admin/pages/${id}`, data);
     },
     onSuccess: () => {
@@ -79,7 +79,7 @@ export default function AdminPages() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: async (id: string) => {
+    mutationFn: async (id: number) => {
       return apiRequest("DELETE", `/api/admin/pages/${id}`);
     },
     onSuccess: () => {
@@ -111,13 +111,13 @@ export default function AdminPages() {
     }
     const data = { ...form, slug };
     if (editingPage) {
-      updateMutation.mutate({ id: editingPage._id, data });
+      updateMutation.mutate({ id: editingPage.id, data });
     } else {
       createMutation.mutate(data);
     }
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = (id: number) => {
     if (!confirm("Are you sure you want to delete this page?")) return;
     deleteMutation.mutate(id);
   };
@@ -177,11 +177,11 @@ export default function AdminPages() {
         ) : (
           <div className="grid gap-4" data-testid="list-pages">
             {pages.map((page) => (
-              <Card key={page._id} data-testid={`card-page-${page._id}`}>
+              <Card key={page.id} data-testid={`card-page-${page.id}`}>
                 <CardHeader className="pb-2">
                   <div className="flex items-center justify-between gap-4 flex-wrap">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <CardTitle className="text-lg" data-testid={`text-title-${page._id}`}>{page.title}</CardTitle>
+                      <CardTitle className="text-lg" data-testid={`text-title-${page.id}`}>{page.title}</CardTitle>
                       <span className="text-sm text-muted-foreground">/{page.slug}</span>
                       {page.isPublished ? (
                         <Badge className="bg-green-500">Published</Badge>
@@ -191,23 +191,23 @@ export default function AdminPages() {
                     </div>
                     <div className="flex items-center gap-2">
                       {page.isPublished && (
-                        <Button size="icon" variant="outline" asChild data-testid={`button-preview-${page._id}`}>
+                        <Button size="icon" variant="outline" asChild data-testid={`button-preview-${page.id}`}>
                           <a href={`/page/${page.slug}`} target="_blank" rel="noopener noreferrer">
                             <ExternalLink className="h-4 w-4" />
                           </a>
                         </Button>
                       )}
-                      <Button size="icon" variant="outline" onClick={() => openEditDialog(page)} data-testid={`button-edit-${page._id}`}>
+                      <Button size="icon" variant="outline" onClick={() => openEditDialog(page)} data-testid={`button-edit-${page.id}`}>
                         <Edit className="h-4 w-4" />
                       </Button>
-                      <Button size="icon" variant="destructive" onClick={() => handleDelete(page._id)} disabled={deleteMutation.isPending} data-testid={`button-delete-${page._id}`}>
+                      <Button size="icon" variant="destructive" onClick={() => handleDelete(page.id)} disabled={deleteMutation.isPending} data-testid={`button-delete-${page.id}`}>
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-sm text-muted-foreground line-clamp-2" data-testid={`text-content-${page._id}`}>{page.content}</p>
+                  <p className="text-sm text-muted-foreground line-clamp-2" data-testid={`text-content-${page.id}`}>{page.content}</p>
                 </CardContent>
               </Card>
             ))}

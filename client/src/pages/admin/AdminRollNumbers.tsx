@@ -9,7 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { FileText, Save, Search, Loader2 } from "lucide-react";
 
 interface Student {
-  _id: string;
+  id: number;
   registrationNumber: string;
   fullName: string;
   class: string;
@@ -41,7 +41,7 @@ export default function AdminRollNumbers() {
         setStudents(data);
         const initialRollNumbers: Record<string, string> = {};
         data.forEach((s: Student) => {
-          initialRollNumbers[s._id] = s.rollNumber || "";
+          initialRollNumbers[s.id] = s.rollNumber || "";
         });
         setRollNumbers(initialRollNumbers);
       }
@@ -66,24 +66,24 @@ export default function AdminRollNumbers() {
   const handleSave = async (student: Student) => {
     try {
       const token = localStorage.getItem("auth_token");
-      const res = await fetch(`/api/students/${student._id}`, {
+      const res = await fetch(`/api/students/${student.id}`, {
         method: "PATCH",
         headers: { 
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}` 
         },
-        body: JSON.stringify({ rollNumber: rollNumbers[student._id] }),
+        body: JSON.stringify({ rollNumber: rollNumbers[student.id] }),
       });
 
       if (!res.ok) throw new Error("Failed to save");
 
       setStudents(prev => prev.map(s => 
-        s._id === student._id ? { ...s, rollNumber: rollNumbers[student._id] } : s
+        s.id === student.id ? { ...s, rollNumber: rollNumbers[student.id] } : s
       ));
 
       toast({ 
         title: "Roll Number Saved", 
-        description: `${student.fullName}: ${rollNumbers[student._id]}` 
+        description: `${student.fullName}: ${rollNumbers[student.id]}` 
       });
     } catch (error) {
       console.error("Error saving roll number:", error);
@@ -105,7 +105,7 @@ export default function AdminRollNumbers() {
     
     try {
       const token = localStorage.getItem("auth_token");
-      const res = await fetch(`/api/students/${student._id}`, {
+      const res = await fetch(`/api/students/${student.id}`, {
         method: "PATCH",
         headers: { 
           "Content-Type": "application/json",
@@ -117,9 +117,9 @@ export default function AdminRollNumbers() {
       if (!res.ok) throw new Error("Failed to assign");
 
       setStudents(prev => prev.map(s => 
-        s._id === student._id ? { ...s, rollNumber } : s
+        s.id === student.id ? { ...s, rollNumber } : s
       ));
-      setRollNumbers(prev => ({ ...prev, [student._id]: rollNumber }));
+      setRollNumbers(prev => ({ ...prev, [student.id]: rollNumber }));
 
       toast({ 
         title: "Roll Number Assigned", 
@@ -155,7 +155,7 @@ export default function AdminRollNumbers() {
       const rollNumber = generateRollNumber(student.class, existingRolls);
 
       try {
-        const res = await fetch(`/api/students/${student._id}`, {
+        const res = await fetch(`/api/students/${student.id}`, {
           method: "PATCH",
           headers: { 
             "Content-Type": "application/json",
@@ -166,9 +166,9 @@ export default function AdminRollNumbers() {
 
         if (res.ok) {
           setStudents(prev => prev.map(s => 
-            s._id === student._id ? { ...s, rollNumber } : s
+            s.id === student.id ? { ...s, rollNumber } : s
           ));
-          setRollNumbers(prev => ({ ...prev, [student._id]: rollNumber }));
+          setRollNumbers(prev => ({ ...prev, [student.id]: rollNumber }));
           assigned++;
         }
       } catch (error) {
@@ -299,7 +299,7 @@ export default function AdminRollNumbers() {
                 </TableHeader>
                 <TableBody>
                   {filteredStudents.map((student) => (
-                    <TableRow key={student._id} data-testid={`row-student-${student._id}`}>
+                    <TableRow key={student.id} data-testid={`row-student-${student.id}`}>
                       <TableCell className="font-medium">{student.registrationNumber}</TableCell>
                       <TableCell>{student.fullName}</TableCell>
                       <TableCell>Class {student.class}</TableCell>
@@ -312,19 +312,19 @@ export default function AdminRollNumbers() {
                       </TableCell>
                       <TableCell>
                         <Input 
-                          value={rollNumbers[student._id] || ""} 
-                          onChange={(e) => handleRollNumberChange(student._id, e.target.value)}
+                          value={rollNumbers[student.id] || ""} 
+                          onChange={(e) => handleRollNumberChange(student.id, e.target.value)}
                           placeholder="Enter roll number"
                           className="w-32"
-                          data-testid={`input-roll-${student._id}`}
+                          data-testid={`input-roll-${student.id}`}
                         />
                       </TableCell>
                       <TableCell>
                         <div className="flex gap-2">
-                          <Button variant="outline" size="sm" onClick={() => handleAutoAssign(student)} data-testid={`button-auto-${student._id}`}>
+                          <Button variant="outline" size="sm" onClick={() => handleAutoAssign(student)} data-testid={`button-auto-${student.id}`}>
                             Auto
                           </Button>
-                          <Button size="sm" onClick={() => handleSave(student)} data-testid={`button-save-${student._id}`}>
+                          <Button size="sm" onClick={() => handleSave(student)} data-testid={`button-save-${student.id}`}>
                             <Save className="h-4 w-4" />
                           </Button>
                         </div>

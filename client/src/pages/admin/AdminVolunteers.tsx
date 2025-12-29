@@ -13,7 +13,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { Loader2, Eye, Check, X, Trash2 } from "lucide-react";
 
 interface Volunteer {
-  _id: string;
+  id: number;
   fullName: string;
   email: string;
   phone: string;
@@ -42,7 +42,7 @@ export default function AdminVolunteers() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: async ({ id, status, notes }: { id: string; status: string; notes?: string }) => {
+    mutationFn: async ({ id, status, notes }: { id: number; status: string; notes?: string }) => {
       return apiRequest("PATCH", `/api/admin/volunteers/${id}`, { status, adminNotes: notes });
     },
     onSuccess: () => {
@@ -56,7 +56,7 @@ export default function AdminVolunteers() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: async (id: string) => {
+    mutationFn: async (id: number) => {
       return apiRequest("DELETE", `/api/admin/volunteers/${id}`);
     },
     onSuccess: () => {
@@ -68,11 +68,11 @@ export default function AdminVolunteers() {
     },
   });
 
-  const updateStatus = (id: string, status: string, notes?: string) => {
+  const updateStatus = (id: number, status: string, notes?: string) => {
     updateMutation.mutate({ id, status, notes });
   };
 
-  const deleteVolunteer = (id: string) => {
+  const deleteVolunteer = (id: number) => {
     if (!confirm("Are you sure you want to delete this application?")) return;
     deleteMutation.mutate(id);
   };
@@ -121,29 +121,29 @@ export default function AdminVolunteers() {
         ) : (
           <div className="grid gap-4" data-testid="list-volunteers">
             {volunteers.map((volunteer) => (
-              <Card key={volunteer._id} data-testid={`card-volunteer-${volunteer._id}`}>
+              <Card key={volunteer.id} data-testid={`card-volunteer-${volunteer.id}`}>
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between gap-4 flex-wrap">
                     <div className="space-y-1">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-semibold" data-testid={`text-name-${volunteer._id}`}>{volunteer.fullName}</span>
+                        <span className="font-semibold" data-testid={`text-name-${volunteer.id}`}>{volunteer.fullName}</span>
                         {getStatusBadge(volunteer.status)}
                       </div>
-                      <p className="text-sm text-muted-foreground" data-testid={`text-email-${volunteer._id}`}>{volunteer.email}</p>
-                      <p className="text-sm text-muted-foreground" data-testid={`text-phone-${volunteer._id}`}>{volunteer.phone}</p>
+                      <p className="text-sm text-muted-foreground" data-testid={`text-email-${volunteer.id}`}>{volunteer.email}</p>
+                      <p className="text-sm text-muted-foreground" data-testid={`text-phone-${volunteer.id}`}>{volunteer.phone}</p>
                       {volunteer.city && <p className="text-sm text-muted-foreground">{volunteer.city}</p>}
                     </div>
                     <div className="flex items-center gap-2 flex-wrap">
-                      <Button size="icon" variant="outline" onClick={() => openViewDialog(volunteer)} data-testid={`button-view-${volunteer._id}`}>
+                      <Button size="icon" variant="outline" onClick={() => openViewDialog(volunteer)} data-testid={`button-view-${volunteer.id}`}>
                         <Eye className="h-4 w-4" />
                       </Button>
-                      <Button size="icon" variant="outline" className="text-green-600" onClick={() => updateStatus(volunteer._id, "approved")} disabled={updateMutation.isPending} data-testid={`button-approve-${volunteer._id}`}>
+                      <Button size="icon" variant="outline" className="text-green-600" onClick={() => updateStatus(volunteer.id, "approved")} disabled={updateMutation.isPending} data-testid={`button-approve-${volunteer.id}`}>
                         <Check className="h-4 w-4" />
                       </Button>
-                      <Button size="icon" variant="outline" className="text-red-600" onClick={() => updateStatus(volunteer._id, "rejected")} disabled={updateMutation.isPending} data-testid={`button-reject-${volunteer._id}`}>
+                      <Button size="icon" variant="outline" className="text-red-600" onClick={() => updateStatus(volunteer.id, "rejected")} disabled={updateMutation.isPending} data-testid={`button-reject-${volunteer.id}`}>
                         <X className="h-4 w-4" />
                       </Button>
-                      <Button size="icon" variant="destructive" onClick={() => deleteVolunteer(volunteer._id)} disabled={deleteMutation.isPending} data-testid={`button-delete-${volunteer._id}`}>
+                      <Button size="icon" variant="destructive" onClick={() => deleteVolunteer(volunteer.id)} disabled={deleteMutation.isPending} data-testid={`button-delete-${volunteer.id}`}>
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
@@ -181,7 +181,7 @@ export default function AdminVolunteers() {
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Update Status</label>
-                  <Select defaultValue={selectedVolunteer.status} onValueChange={(value) => updateStatus(selectedVolunteer._id, value, adminNotes)}>
+                  <Select defaultValue={selectedVolunteer.status} onValueChange={(value) => updateStatus(selectedVolunteer.id, value, adminNotes)}>
                     <SelectTrigger data-testid="select-status">
                       <SelectValue />
                     </SelectTrigger>

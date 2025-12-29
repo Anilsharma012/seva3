@@ -16,7 +16,7 @@ const feeLevels = [
 ];
 
 interface Student {
-  _id: string;
+  id: number;
   registrationNumber: string;
   fullName: string;
   feeLevel: string;
@@ -71,7 +71,7 @@ export default function AdminFees() {
       if (!res.ok) throw new Error("Failed to verify");
 
       setStudents(students.map(s =>
-        s._id === studentId ? { ...s, feePaid: true } : s
+        s.id === studentId ? { ...s, feePaid: true } : s
       ));
       toast({ title: "Payment Verified", description: "भुगतान सत्यापित" });
     } catch (error) {
@@ -98,7 +98,7 @@ export default function AdminFees() {
       if (!res.ok) throw new Error("Failed to update");
 
       setStudents(students.map(s =>
-        s._id === studentId ? { ...s, feeLevel, feeAmount: selectedFee?.amount || 99 } : s
+        s.id === studentId ? { ...s, feeLevel, feeAmount: selectedFee?.amount || 99 } : s
       ));
       toast({ title: "Fee Level Updated", description: `Rs.${selectedFee?.amount}` });
     } catch (error) {
@@ -199,15 +199,15 @@ export default function AdminFees() {
                   </TableHeader>
                   <TableBody>
                     {filteredStudents.map((student) => (
-                      <TableRow key={student._id} data-testid={`row-fee-${student._id}`}>
+                      <TableRow key={student.id} data-testid={`row-fee-${student.id}`}>
                         <TableCell className="font-medium">{student.registrationNumber}</TableCell>
                         <TableCell>{student.fullName}</TableCell>
                         <TableCell>
                           <Select
                             value={student.feeLevel || "village"}
-                            onValueChange={(v) => handleUpdateFeeLevel(student._id, v)}
+                            onValueChange={(v) => handleUpdateFeeLevel(student.id, v)}
                           >
-                            <SelectTrigger className="w-36" data-testid={`select-fee-level-${student._id}`}>
+                            <SelectTrigger className="w-36" data-testid={`select-fee-level-${student.id}`}>
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
@@ -230,8 +230,8 @@ export default function AdminFees() {
                             <Button
                               size="sm"
                               variant="outline"
-                              onClick={() => handleVerifyPayment(student._id)}
-                              data-testid={`button-verify-${student._id}`}
+                              onClick={() => handleVerifyPayment(student.id)}
+                              data-testid={`button-verify-${student.id}`}
                             >
                               <Check className="h-4 w-4 mr-1" />
                               Verify

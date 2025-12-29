@@ -18,7 +18,7 @@ const feeLevels = [
 ];
 
 interface Student {
-  _id: string;
+  id: number;
   email: string;
   fullName: string;
   fatherName?: string;
@@ -83,7 +83,7 @@ export default function AdminStudents() {
 
     if (editingStudent) {
       try {
-        const res = await fetch(`/api/students/${editingStudent._id}`, {
+        const res = await fetch(`/api/students/${editingStudent.id}`, {
           method: "PATCH",
           headers: { 
             "Content-Type": "application/json",
@@ -370,7 +370,7 @@ export default function AdminStudents() {
                       </TableRow>
                     ) : (
                       filteredStudents.map((student) => (
-                        <TableRow key={student._id} data-testid={`row-student-${student._id}`}>
+                        <TableRow key={student.id} data-testid={`row-student-${student.id}`}>
                           <TableCell className="font-medium">{student.registrationNumber}</TableCell>
                           <TableCell>{student.fullName}</TableCell>
                           <TableCell className="text-sm">{student.email || "-"}</TableCell>
@@ -386,7 +386,7 @@ export default function AdminStudents() {
                             </span>
                           </TableCell>
                           <TableCell>
-                            <Button variant="ghost" size="icon" onClick={() => handleEdit(student)} data-testid={`button-edit-${student._id}`}>
+                            <Button variant="ghost" size="icon" onClick={() => handleEdit(student)} data-testid={`button-edit-${student.id}`}>
                               <Edit className="h-4 w-4" />
                             </Button>
                           </TableCell>

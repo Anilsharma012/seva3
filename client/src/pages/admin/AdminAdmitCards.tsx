@@ -11,7 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { IdCard, Plus, Search, Download, Loader2, Users } from "lucide-react";
 
 interface Student {
-  _id: string;
+  id: number;
   registrationNumber: string;
   rollNumber?: string;
   fullName: string;
@@ -21,9 +21,9 @@ interface Student {
 }
 
 interface AdmitCard {
-  _id: string;
+  id: number;
   studentId: {
-    _id: string;
+    id: number;
     fullName: string;
     fatherName?: string;
     rollNumber?: string;
@@ -98,7 +98,7 @@ export default function AdminAdmitCards() {
   const handleSubmit = async () => {
     try {
       const token = localStorage.getItem("auth_token");
-      const student = students.find(s => s._id === formData.studentId);
+      const student = students.find(s => s.id === formData.studentId);
       if (!student) return;
 
       const fileData = JSON.stringify({
@@ -145,8 +145,8 @@ export default function AdminAdmitCards() {
       return s.class === bulkFormData.targetClass;
     });
 
-    const existingStudentIds = new Set(admitCards.map(ac => ac.studentId?._id));
-    const studentsToGenerate = targetStudents.filter(s => !existingStudentIds.has(s._id));
+    const existingStudentIds = new Set(admitCards.map(ac => ac.studentId?.id));
+    const studentsToGenerate = targetStudents.filter(s => !existingStudentIds.has(s.id));
 
     let generated = 0;
     let failed = 0;
@@ -168,7 +168,7 @@ export default function AdminAdmitCards() {
             Authorization: `Bearer ${token}` 
           },
           body: JSON.stringify({
-            studentId: student._id,
+            studentId: student.id,
             examName: bulkFormData.examName,
             fileUrl: fileData,
             fileName: `admit_card_${student.rollNumber || student.registrationNumber}.json`,
@@ -350,8 +350,8 @@ export default function AdminAdmitCards() {
   });
 
   const studentsWithoutAdmitCard = () => {
-    const existingStudentIds = new Set(admitCards.map(ac => ac.studentId?._id));
-    return filteredEligibleStudents.filter(s => !existingStudentIds.has(s._id)).length;
+    const existingStudentIds = new Set(admitCards.map(ac => ac.studentId?.id));
+    return filteredEligibleStudents.filter(s => !existingStudentIds.has(s.id)).length;
   };
 
   if (loading) {
@@ -462,7 +462,7 @@ export default function AdminAdmitCards() {
                       <SelectTrigger data-testid="select-student"><SelectValue placeholder="छात्र चुनें" /></SelectTrigger>
                       <SelectContent>
                         {filteredEligibleStudents.map(s => (
-                          <SelectItem key={s._id} value={s._id}>
+                          <SelectItem key={s.id} value={s.id}>
                             {s.fullName} (Roll: {s.rollNumber}, Class: {s.class})
                           </SelectItem>
                         ))}
@@ -586,7 +586,7 @@ export default function AdminAdmitCards() {
                     filteredAdmitCards.map((ac) => {
                       const admitData = parseAdmitCardData(ac.fileUrl);
                       return (
-                        <TableRow key={ac._id} data-testid={`row-admit-card-${ac._id}`}>
+                        <TableRow key={ac.id} data-testid={`row-admit-card-${ac.id}`}>
                           <TableCell className="font-medium">{ac.studentId?.rollNumber}</TableCell>
                           <TableCell>{ac.studentId?.fullName}</TableCell>
                           <TableCell>{ac.studentId?.fatherName || "-"}</TableCell>
@@ -595,7 +595,7 @@ export default function AdminAdmitCards() {
                           <TableCell>{admitData?.examDate || "TBD"}</TableCell>
                           <TableCell>{admitData?.examCenter || "TBD"}</TableCell>
                           <TableCell>
-                            <Button variant="ghost" size="sm" onClick={() => handleDownload(ac)} data-testid={`button-download-${ac._id}`}>
+                            <Button variant="ghost" size="sm" onClick={() => handleDownload(ac)} data-testid={`button-download-${ac.id}`}>
                               <Download className="h-4 w-4 mr-1" />
                               Download
                             </Button>

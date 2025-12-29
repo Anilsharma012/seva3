@@ -15,7 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2, Plus, Pencil, Trash2, Save, Menu, Settings, GripVertical } from "lucide-react";
 
 interface MenuItemData {
-  _id: string;
+  id: number;
   title: string;
   titleHindi?: string;
   path: string;
@@ -26,7 +26,7 @@ interface MenuItemData {
 }
 
 interface SettingData {
-  _id: string;
+  id: number;
   key: string;
   value: string;
   label: string;
@@ -90,7 +90,7 @@ export default function AdminSettings() {
   const handleSaveMenu = async () => {
     setSaving(true);
     try {
-      const url = editingMenu ? `/api/admin/menu/${editingMenu._id}` : "/api/admin/menu";
+      const url = editingMenu ? `/api/admin/menu/${editingMenu.id}` : "/api/admin/menu";
       const method = editingMenu ? "PATCH" : "POST";
       
       const response = await fetch(url, {
@@ -119,7 +119,7 @@ export default function AdminSettings() {
     }
   };
 
-  const handleDeleteMenu = async (id: string) => {
+  const handleDeleteMenu = async (id: number) => {
     if (!confirm("Are you sure you want to delete this menu item?")) return;
     
     try {
@@ -140,7 +140,7 @@ export default function AdminSettings() {
 
   const handleToggleMenuItem = async (item: MenuItemData) => {
     try {
-      const response = await fetch(`/api/admin/menu/${item._id}`, {
+      const response = await fetch(`/api/admin/menu/${item.id}`, {
         method: "PATCH",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -342,7 +342,7 @@ export default function AdminSettings() {
                   </TableHeader>
                   <TableBody>
                     {menuItems.map((item) => (
-                      <TableRow key={item._id} data-testid={`row-menu-${item._id}`}>
+                      <TableRow key={item.id} data-testid={`row-menu-${item.id}`}>
                         <TableCell>
                           <div className="flex items-center gap-2">
                             <GripVertical className="h-4 w-4 text-muted-foreground" />
@@ -361,15 +361,15 @@ export default function AdminSettings() {
                           <Switch
                             checked={item.isActive}
                             onCheckedChange={() => handleToggleMenuItem(item)}
-                            data-testid={`switch-menu-status-${item._id}`}
+                            data-testid={`switch-menu-status-${item.id}`}
                           />
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2">
-                            <Button size="icon" variant="ghost" onClick={() => openEditDialog(item)} data-testid={`button-edit-menu-${item._id}`}>
+                            <Button size="icon" variant="ghost" onClick={() => openEditDialog(item)} data-testid={`button-edit-menu-${item.id}`}>
                               <Pencil className="h-4 w-4" />
                             </Button>
-                            <Button size="icon" variant="ghost" onClick={() => handleDeleteMenu(item._id)} data-testid={`button-delete-menu-${item._id}`}>
+                            <Button size="icon" variant="ghost" onClick={() => handleDeleteMenu(item.id)} data-testid={`button-delete-menu-${item.id}`}>
                               <Trash2 className="h-4 w-4" />
                             </Button>
                           </div>
@@ -390,7 +390,7 @@ export default function AdminSettings() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   {categorySettings.map((setting) => (
-                    <div key={setting._id} className="flex items-center justify-between py-3 border-b last:border-0" data-testid={`setting-${setting.key}`}>
+                    <div key={setting.id} className="flex items-center justify-between py-3 border-b last:border-0" data-testid={`setting-${setting.key}`}>
                       <div className="space-y-0.5">
                         <Label className="text-base">{setting.label}</Label>
                         {setting.labelHindi && <p className="text-xs text-muted-foreground">{setting.labelHindi}</p>}

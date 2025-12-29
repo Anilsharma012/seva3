@@ -16,7 +16,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { Loader2, Plus, Edit, Trash2, QrCode, Building, Smartphone } from "lucide-react";
 
 interface PaymentConfig {
-  _id: string;
+  id: number;
   type: "donation" | "fee" | "membership" | "general";
   name: string;
   nameHindi?: string;
@@ -78,7 +78,7 @@ export default function AdminPayments() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: typeof form }) => {
+    mutationFn: async ({ id, data }: { id: number; data: typeof form }) => {
       return apiRequest("PATCH", `/api/admin/payment-config/${id}`, data);
     },
     onSuccess: () => {
@@ -93,7 +93,7 @@ export default function AdminPayments() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: async (id: string) => {
+    mutationFn: async (id: number) => {
       return apiRequest("DELETE", `/api/admin/payment-config/${id}`);
     },
     onSuccess: () => {
@@ -111,13 +111,13 @@ export default function AdminPayments() {
       return;
     }
     if (editingConfig) {
-      updateMutation.mutate({ id: editingConfig._id, data: form });
+      updateMutation.mutate({ id: editingConfig.id, data: form });
     } else {
       createMutation.mutate(form);
     }
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = (id: number) => {
     if (!confirm("Are you sure you want to delete this payment config?")) return;
     deleteMutation.mutate(id);
   };
@@ -201,19 +201,19 @@ export default function AdminPayments() {
         ) : (
           <div className="grid gap-4 md:grid-cols-2" data-testid="list-configs">
             {configs.map((config) => (
-              <Card key={config._id} data-testid={`card-config-${config._id}`}>
+              <Card key={config.id} data-testid={`card-config-${config.id}`}>
                 <CardHeader className="pb-2">
                   <div className="flex items-center justify-between gap-4 flex-wrap">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <CardTitle className="text-lg" data-testid={`text-name-${config._id}`}>{config.name}</CardTitle>
+                      <CardTitle className="text-lg" data-testid={`text-name-${config.id}`}>{config.name}</CardTitle>
                       <Badge className={getTypeColor(config.type)}>{config.type}</Badge>
                       {!config.isActive && <Badge variant="secondary">Inactive</Badge>}
                     </div>
                     <div className="flex items-center gap-2">
-                      <Button size="icon" variant="outline" onClick={() => openEditDialog(config)} data-testid={`button-edit-${config._id}`}>
+                      <Button size="icon" variant="outline" onClick={() => openEditDialog(config)} data-testid={`button-edit-${config.id}`}>
                         <Edit className="h-4 w-4" />
                       </Button>
-                      <Button size="icon" variant="destructive" onClick={() => handleDelete(config._id)} disabled={deleteMutation.isPending} data-testid={`button-delete-${config._id}`}>
+                      <Button size="icon" variant="destructive" onClick={() => handleDelete(config.id)} disabled={deleteMutation.isPending} data-testid={`button-delete-${config.id}`}>
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
@@ -221,19 +221,19 @@ export default function AdminPayments() {
                 </CardHeader>
                 <CardContent className="space-y-2">
                   {config.qrCodeUrl && (
-                    <div className="flex items-center gap-2 text-sm" data-testid={`text-qr-${config._id}`}>
+                    <div className="flex items-center gap-2 text-sm" data-testid={`text-qr-${config.id}`}>
                       <QrCode className="h-4 w-4 text-muted-foreground" />
                       <span>QR Code configured</span>
                     </div>
                   )}
                   {config.upiId && (
-                    <div className="flex items-center gap-2 text-sm" data-testid={`text-upi-${config._id}`}>
+                    <div className="flex items-center gap-2 text-sm" data-testid={`text-upi-${config.id}`}>
                       <Smartphone className="h-4 w-4 text-muted-foreground" />
                       <span>{config.upiId}</span>
                     </div>
                   )}
                   {config.bankName && (
-                    <div className="flex items-center gap-2 text-sm" data-testid={`text-bank-${config._id}`}>
+                    <div className="flex items-center gap-2 text-sm" data-testid={`text-bank-${config.id}`}>
                       <Building className="h-4 w-4 text-muted-foreground" />
                       <span>{config.bankName} - {config.accountNumber}</span>
                     </div>

@@ -15,7 +15,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { Loader2, Plus, Edit, Trash2 } from "lucide-react";
 
 interface ContentSection {
-  _id: string;
+  id: number;
   sectionKey: string;
   title: string;
   titleHindi?: string;
@@ -73,7 +73,7 @@ export default function AdminContent() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: typeof form }) => {
+    mutationFn: async ({ id, data }: { id: number; data: typeof form }) => {
       return apiRequest("PATCH", `/api/admin/content-sections/${id}`, data);
     },
     onSuccess: () => {
@@ -88,7 +88,7 @@ export default function AdminContent() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: async (id: string) => {
+    mutationFn: async (id: number) => {
       return apiRequest("DELETE", `/api/admin/content-sections/${id}`);
     },
     onSuccess: () => {
@@ -110,13 +110,13 @@ export default function AdminContent() {
       return;
     }
     if (editingSection) {
-      updateMutation.mutate({ id: editingSection._id, data: form });
+      updateMutation.mutate({ id: editingSection.id, data: form });
     } else {
       createMutation.mutate(form);
     }
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = (id: number) => {
     if (!confirm("Are you sure you want to delete this section?")) return;
     deleteMutation.mutate(id);
   };
@@ -175,26 +175,26 @@ export default function AdminContent() {
         ) : (
           <div className="grid gap-4" data-testid="list-sections">
             {sections.map((section) => (
-              <Card key={section._id} data-testid={`card-section-${section._id}`}>
+              <Card key={section.id} data-testid={`card-section-${section.id}`}>
                 <CardHeader className="pb-2">
                   <div className="flex items-center justify-between gap-4 flex-wrap">
                     <div className="flex items-center gap-2">
-                      <CardTitle className="text-lg" data-testid={`text-title-${section._id}`}>{section.title}</CardTitle>
+                      <CardTitle className="text-lg" data-testid={`text-title-${section.id}`}>{section.title}</CardTitle>
                       <span className="text-sm text-muted-foreground">({section.sectionKey})</span>
                       {!section.isActive && <span className="text-xs text-red-500">(Inactive)</span>}
                     </div>
                     <div className="flex items-center gap-2">
-                      <Button size="icon" variant="outline" onClick={() => openEditDialog(section)} data-testid={`button-edit-${section._id}`}>
+                      <Button size="icon" variant="outline" onClick={() => openEditDialog(section)} data-testid={`button-edit-${section.id}`}>
                         <Edit className="h-4 w-4" />
                       </Button>
-                      <Button size="icon" variant="destructive" onClick={() => handleDelete(section._id)} disabled={deleteMutation.isPending} data-testid={`button-delete-${section._id}`}>
+                      <Button size="icon" variant="destructive" onClick={() => handleDelete(section.id)} disabled={deleteMutation.isPending} data-testid={`button-delete-${section.id}`}>
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-sm text-muted-foreground line-clamp-2" data-testid={`text-content-${section._id}`}>{section.content}</p>
+                  <p className="text-sm text-muted-foreground line-clamp-2" data-testid={`text-content-${section.id}`}>{section.content}</p>
                 </CardContent>
               </Card>
             ))}

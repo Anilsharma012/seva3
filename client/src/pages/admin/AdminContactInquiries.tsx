@@ -13,7 +13,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { Loader2, Eye, Mail, Trash2 } from "lucide-react";
 
 interface ContactInquiry {
-  _id: string;
+  id: number;
   name: string;
   email: string;
   phone?: string;
@@ -38,7 +38,7 @@ export default function AdminContactInquiries() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: async ({ id, status, notes }: { id: string; status: string; notes?: string }) => {
+    mutationFn: async ({ id, status, notes }: { id: number; status: string; notes?: string }) => {
       return apiRequest("PATCH", `/api/admin/contact-inquiries/${id}`, { status, adminNotes: notes });
     },
     onSuccess: () => {
@@ -52,7 +52,7 @@ export default function AdminContactInquiries() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: async (id: string) => {
+    mutationFn: async (id: number) => {
       return apiRequest("DELETE", `/api/admin/contact-inquiries/${id}`);
     },
     onSuccess: () => {
@@ -64,11 +64,11 @@ export default function AdminContactInquiries() {
     },
   });
 
-  const updateStatus = (id: string, status: string, notes?: string) => {
+  const updateStatus = (id: number, status: string, notes?: string) => {
     updateMutation.mutate({ id, status, notes });
   };
 
-  const deleteInquiry = (id: string) => {
+  const deleteInquiry = (id: number) => {
     if (!confirm("Are you sure you want to delete this inquiry?")) return;
     deleteMutation.mutate(id);
   };
@@ -86,7 +86,7 @@ export default function AdminContactInquiries() {
     setAdminNotes(inquiry.adminNotes || "");
     setViewDialogOpen(true);
     if (inquiry.status === "pending") {
-      updateStatus(inquiry._id, "read");
+      updateStatus(inquiry.id, "read");
     }
   };
 
@@ -121,28 +121,28 @@ export default function AdminContactInquiries() {
         ) : (
           <div className="grid gap-4" data-testid="list-inquiries">
             {inquiries.map((inquiry) => (
-              <Card key={inquiry._id} data-testid={`card-inquiry-${inquiry._id}`}>
+              <Card key={inquiry.id} data-testid={`card-inquiry-${inquiry.id}`}>
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between gap-4 flex-wrap">
                     <div className="space-y-1 flex-1">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-semibold" data-testid={`text-name-${inquiry._id}`}>{inquiry.name}</span>
+                        <span className="font-semibold" data-testid={`text-name-${inquiry.id}`}>{inquiry.name}</span>
                         {getStatusBadge(inquiry.status)}
                       </div>
-                      <p className="text-sm text-muted-foreground" data-testid={`text-email-${inquiry._id}`}>{inquiry.email}</p>
-                      <p className="text-sm font-medium" data-testid={`text-subject-${inquiry._id}`}>Subject: {inquiry.subject}</p>
-                      <p className="text-sm text-muted-foreground line-clamp-2" data-testid={`text-message-${inquiry._id}`}>{inquiry.message}</p>
+                      <p className="text-sm text-muted-foreground" data-testid={`text-email-${inquiry.id}`}>{inquiry.email}</p>
+                      <p className="text-sm font-medium" data-testid={`text-subject-${inquiry.id}`}>Subject: {inquiry.subject}</p>
+                      <p className="text-sm text-muted-foreground line-clamp-2" data-testid={`text-message-${inquiry.id}`}>{inquiry.message}</p>
                     </div>
                     <div className="flex items-center gap-2 flex-wrap">
-                      <Button size="icon" variant="outline" onClick={() => openViewDialog(inquiry)} data-testid={`button-view-${inquiry._id}`}>
+                      <Button size="icon" variant="outline" onClick={() => openViewDialog(inquiry)} data-testid={`button-view-${inquiry.id}`}>
                         <Eye className="h-4 w-4" />
                       </Button>
-                      <Button size="icon" variant="outline" asChild data-testid={`button-email-${inquiry._id}`}>
+                      <Button size="icon" variant="outline" asChild data-testid={`button-email-${inquiry.id}`}>
                         <a href={`mailto:${inquiry.email}?subject=Re: ${inquiry.subject}`}>
                           <Mail className="h-4 w-4" />
                         </a>
                       </Button>
-                      <Button size="icon" variant="destructive" onClick={() => deleteInquiry(inquiry._id)} disabled={deleteMutation.isPending} data-testid={`button-delete-${inquiry._id}`}>
+                      <Button size="icon" variant="destructive" onClick={() => deleteInquiry(inquiry.id)} disabled={deleteMutation.isPending} data-testid={`button-delete-${inquiry.id}`}>
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
@@ -176,7 +176,7 @@ export default function AdminContactInquiries() {
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Update Status</label>
-                  <Select defaultValue={selectedInquiry.status} onValueChange={(value) => updateStatus(selectedInquiry._id, value, adminNotes)}>
+                  <Select defaultValue={selectedInquiry.status} onValueChange={(value) => updateStatus(selectedInquiry.id, value, adminNotes)}>
                     <SelectTrigger data-testid="select-status">
                       <SelectValue />
                     </SelectTrigger>
