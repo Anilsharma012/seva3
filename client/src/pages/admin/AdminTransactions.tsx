@@ -39,10 +39,7 @@ export default function AdminTransactions() {
 
   const approveMutation = useMutation({
     mutationFn: async ({ id, status, notes }: { id: number; status: string; notes: string }) => {
-      return apiRequest(`/api/admin/payment-transactions/${id}`, {
-        method: "PATCH",
-        body: JSON.stringify({ status, adminNotes: notes }),
-      });
+      return apiRequest("PATCH", `/api/admin/payment-transactions/${id}`, { status, adminNotes: notes });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/payment-transactions"] });
