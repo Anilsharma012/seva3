@@ -1,56 +1,72 @@
-import { db } from "./db";
-import { eq, desc, sql, like, and, gte } from "drizzle-orm";
 import {
-  admins, students, results, admitCards, memberships, menuItems,
-  adminSettings, paymentConfigs, contentSections, volunteerApplications,
-  feeStructures, membershipCards, pages, contactInquiries,
-  volunteerAccounts, paymentTransactions, teamMembers, services, galleryImages,
+  Admin, Student, Result, AdmitCard as AdmitCardType, Membership, MenuItem, AdminSetting, PaymentConfig,
+  ContentSection, VolunteerApplication, FeeStructure, MembershipCard, Page, ContactInquiry,
+  VolunteerAccount, PaymentTransaction, TeamMember, Service, GalleryImage,
   InsertAdmin, InsertStudent, InsertResult, InsertAdmitCard, InsertMembership,
   InsertMenuItem, InsertAdminSetting, InsertPaymentConfig, InsertContentSection,
   InsertVolunteerApplication, InsertFeeStructure, InsertMembershipCard, InsertPage, InsertContactInquiry,
-  InsertVolunteerAccount, InsertPaymentTransaction, InsertTeamMember, InsertService, InsertGalleryImage,
-  Admin, Student, Result, AdmitCard, Membership, MenuItem, AdminSetting, PaymentConfig,
-  ContentSection, VolunteerApplication, FeeStructure, MembershipCard, Page, ContactInquiry,
-  VolunteerAccount, PaymentTransaction, TeamMember, Service, GalleryImage
+  InsertVolunteerAccount, InsertPaymentTransaction, InsertTeamMember, InsertService, InsertGalleryImage
 } from "@shared/schema";
+import {
+  Admin as AdminModel, Student as StudentModel, Result as ResultModel, AdmitCard as AdmitCardModel,
+  Membership as MembershipModel, MenuItem as MenuItemModel, AdminSetting as AdminSettingModel,
+  PaymentConfig as PaymentConfigModel, ContentSection as ContentSectionModel,
+  VolunteerApplication as VolunteerApplicationModel, FeeStructure as FeeStructureModel,
+  MembershipCard as MembershipCardModel, Page as PageModel, ContactInquiry as ContactInquiryModel,
+  VolunteerAccount as VolunteerAccountModel, PaymentTransaction as PaymentTransactionModel,
+  TeamMember as TeamMemberModel, Service as ServiceModel, GalleryImage as GalleryImageModel
+} from "./models";
+
+function toPlain<T>(doc: any): T {
+  if (!doc) return doc;
+  const obj = doc.toObject ? doc.toObject() : doc;
+  obj.id = obj._id?.toString() || obj.id;
+  delete obj._id;
+  delete obj.__v;
+  return obj as T;
+}
+
+function toPlainArray<T>(docs: any[]): T[] {
+  return docs.map(doc => toPlain<T>(doc));
+}
 
 export interface IStorage {
   createAdmin(data: InsertAdmin): Promise<Admin>;
   getAdminByEmail(email: string): Promise<Admin | undefined>;
-  getAdminById(id: number): Promise<Admin | undefined>;
+  getAdminById(id: string): Promise<Admin | undefined>;
 
   createStudent(data: InsertStudent): Promise<Student>;
   getStudentByEmail(email: string): Promise<Student | undefined>;
-  getStudentById(id: number): Promise<Student | undefined>;
+  getStudentById(id: string): Promise<Student | undefined>;
   getStudentByRollNumber(rollNumber: string): Promise<Student | undefined>;
   getAllStudents(): Promise<Student[]>;
-  updateStudent(id: number, data: Partial<InsertStudent>): Promise<Student | undefined>;
+  updateStudent(id: string, data: Partial<InsertStudent>): Promise<Student | undefined>;
   countStudentsWithRegPrefix(prefix: string): Promise<number>;
   countStudentsToday(): Promise<number>;
   countStudentsFeePaid(): Promise<number>;
   countActiveStudents(): Promise<number>;
 
   createResult(data: InsertResult): Promise<Result>;
-  getResultsByStudentId(studentId: number, publishedOnly?: boolean): Promise<Result[]>;
+  getResultsByStudentId(studentId: string, publishedOnly?: boolean): Promise<Result[]>;
   getAllResults(publishedOnly?: boolean): Promise<Result[]>;
-  updateResult(id: number, data: Partial<InsertResult>): Promise<Result | undefined>;
+  updateResult(id: string, data: Partial<InsertResult>): Promise<Result | undefined>;
 
-  createAdmitCard(data: InsertAdmitCard): Promise<AdmitCard>;
-  getAdmitCardsByStudentId(studentId: number): Promise<AdmitCard[]>;
-  getAllAdmitCards(): Promise<AdmitCard[]>;
-  deleteAdmitCard(id: number): Promise<void>;
+  createAdmitCard(data: InsertAdmitCard): Promise<AdmitCardType>;
+  getAdmitCardsByStudentId(studentId: string): Promise<AdmitCardType[]>;
+  getAllAdmitCards(): Promise<AdmitCardType[]>;
+  deleteAdmitCard(id: string): Promise<void>;
 
   createMembership(data: InsertMembership): Promise<Membership>;
-  getMembershipByUserId(userId: number): Promise<Membership | undefined>;
+  getMembershipByUserId(userId: string): Promise<Membership | undefined>;
   getAllMemberships(): Promise<Membership[]>;
-  updateMembership(id: number, data: Partial<InsertMembership>): Promise<Membership | undefined>;
+  updateMembership(id: string, data: Partial<InsertMembership>): Promise<Membership | undefined>;
   countMemberships(): Promise<number>;
 
   createMenuItem(data: InsertMenuItem): Promise<MenuItem>;
   getActiveMenuItems(): Promise<MenuItem[]>;
   getAllMenuItems(): Promise<MenuItem[]>;
-  updateMenuItem(id: number, data: Partial<InsertMenuItem>): Promise<MenuItem | undefined>;
-  deleteMenuItem(id: number): Promise<void>;
+  updateMenuItem(id: string, data: Partial<InsertMenuItem>): Promise<MenuItem | undefined>;
+  deleteMenuItem(id: string): Promise<void>;
 
   createAdminSetting(data: InsertAdminSetting): Promise<AdminSetting>;
   getAdminSettingByKey(key: string): Promise<AdminSetting | undefined>;
@@ -60,519 +76,529 @@ export interface IStorage {
   createPaymentConfig(data: InsertPaymentConfig): Promise<PaymentConfig>;
   getPaymentConfigsByType(type: string): Promise<PaymentConfig[]>;
   getAllPaymentConfigs(): Promise<PaymentConfig[]>;
-  updatePaymentConfig(id: number, data: Partial<InsertPaymentConfig>): Promise<PaymentConfig | undefined>;
-  deletePaymentConfig(id: number): Promise<void>;
+  updatePaymentConfig(id: string, data: Partial<InsertPaymentConfig>): Promise<PaymentConfig | undefined>;
+  deletePaymentConfig(id: string): Promise<void>;
 
   createContentSection(data: InsertContentSection): Promise<ContentSection>;
   getContentSectionsByKey(key: string): Promise<ContentSection[]>;
   getAllContentSections(): Promise<ContentSection[]>;
-  updateContentSection(id: number, data: Partial<InsertContentSection>): Promise<ContentSection | undefined>;
-  deleteContentSection(id: number): Promise<void>;
+  updateContentSection(id: string, data: Partial<InsertContentSection>): Promise<ContentSection | undefined>;
+  deleteContentSection(id: string): Promise<void>;
 
   createVolunteerApplication(data: InsertVolunteerApplication): Promise<VolunteerApplication>;
   getAllVolunteerApplications(): Promise<VolunteerApplication[]>;
-  updateVolunteerApplication(id: number, data: Partial<InsertVolunteerApplication>): Promise<VolunteerApplication | undefined>;
+  updateVolunteerApplication(id: string, data: Partial<InsertVolunteerApplication>): Promise<VolunteerApplication | undefined>;
 
   createFeeStructure(data: InsertFeeStructure): Promise<FeeStructure>;
   getAllFeeStructures(): Promise<FeeStructure[]>;
-  updateFeeStructure(id: number, data: Partial<InsertFeeStructure>): Promise<FeeStructure | undefined>;
+  updateFeeStructure(id: string, data: Partial<InsertFeeStructure>): Promise<FeeStructure | undefined>;
 
   createMembershipCard(data: InsertMembershipCard): Promise<MembershipCard>;
-  getMembershipCardByMembershipId(membershipId: number): Promise<MembershipCard | undefined>;
+  getMembershipCardByMembershipId(membershipId: string): Promise<MembershipCard | undefined>;
   getAllMembershipCards(): Promise<MembershipCard[]>;
-  updateMembershipCard(id: number, data: Partial<InsertMembershipCard>): Promise<MembershipCard | undefined>;
+  updateMembershipCard(id: string, data: Partial<InsertMembershipCard>): Promise<MembershipCard | undefined>;
 
   createPage(data: InsertPage): Promise<Page>;
   getPageBySlug(slug: string): Promise<Page | undefined>;
   getAllPages(): Promise<Page[]>;
-  updatePage(id: number, data: Partial<InsertPage>): Promise<Page | undefined>;
-  deletePage(id: number): Promise<void>;
+  updatePage(id: string, data: Partial<InsertPage>): Promise<Page | undefined>;
+  deletePage(id: string): Promise<void>;
 
   createContactInquiry(data: InsertContactInquiry): Promise<ContactInquiry>;
   getAllContactInquiries(): Promise<ContactInquiry[]>;
-  updateContactInquiry(id: number, data: Partial<InsertContactInquiry>): Promise<ContactInquiry | undefined>;
+  updateContactInquiry(id: string, data: Partial<InsertContactInquiry>): Promise<ContactInquiry | undefined>;
 
   createVolunteerAccount(data: InsertVolunteerAccount): Promise<VolunteerAccount>;
   getVolunteerAccountByEmail(email: string): Promise<VolunteerAccount | undefined>;
-  getVolunteerAccountById(id: number): Promise<VolunteerAccount | undefined>;
+  getVolunteerAccountById(id: string): Promise<VolunteerAccount | undefined>;
   getAllVolunteerAccounts(): Promise<VolunteerAccount[]>;
-  updateVolunteerAccount(id: number, data: Partial<InsertVolunteerAccount>): Promise<VolunteerAccount | undefined>;
+  updateVolunteerAccount(id: string, data: Partial<InsertVolunteerAccount>): Promise<VolunteerAccount | undefined>;
 
   createPaymentTransaction(data: InsertPaymentTransaction): Promise<PaymentTransaction>;
-  getPaymentTransactionById(id: number): Promise<PaymentTransaction | undefined>;
+  getPaymentTransactionById(id: string): Promise<PaymentTransaction | undefined>;
   getPaymentTransactionByTransactionId(transactionId: string): Promise<PaymentTransaction | undefined>;
   getAllPaymentTransactions(): Promise<PaymentTransaction[]>;
   getPaymentTransactionsByType(type: string): Promise<PaymentTransaction[]>;
   getPaymentTransactionsByEmail(email: string): Promise<PaymentTransaction[]>;
   getPendingPaymentTransactions(): Promise<PaymentTransaction[]>;
-  updatePaymentTransaction(id: number, data: Partial<InsertPaymentTransaction>): Promise<PaymentTransaction | undefined>;
+  updatePaymentTransaction(id: string, data: Partial<InsertPaymentTransaction>): Promise<PaymentTransaction | undefined>;
 
   createTeamMember(data: InsertTeamMember): Promise<TeamMember>;
   getAllTeamMembers(): Promise<TeamMember[]>;
   getActiveTeamMembers(): Promise<TeamMember[]>;
-  updateTeamMember(id: number, data: Partial<InsertTeamMember>): Promise<TeamMember | undefined>;
-  deleteTeamMember(id: number): Promise<void>;
+  updateTeamMember(id: string, data: Partial<InsertTeamMember>): Promise<TeamMember | undefined>;
+  deleteTeamMember(id: string): Promise<void>;
 
   createService(data: InsertService): Promise<Service>;
   getAllServices(): Promise<Service[]>;
   getActiveServices(): Promise<Service[]>;
-  updateService(id: number, data: Partial<InsertService>): Promise<Service | undefined>;
-  deleteService(id: number): Promise<void>;
+  updateService(id: string, data: Partial<InsertService>): Promise<Service | undefined>;
+  deleteService(id: string): Promise<void>;
 
   createGalleryImage(data: InsertGalleryImage): Promise<GalleryImage>;
   getAllGalleryImages(): Promise<GalleryImage[]>;
   getGalleryImagesByCategory(category: string): Promise<GalleryImage[]>;
   getActiveGalleryImages(): Promise<GalleryImage[]>;
-  updateGalleryImage(id: number, data: Partial<InsertGalleryImage>): Promise<GalleryImage | undefined>;
-  deleteGalleryImage(id: number): Promise<void>;
+  updateGalleryImage(id: string, data: Partial<InsertGalleryImage>): Promise<GalleryImage | undefined>;
+  deleteGalleryImage(id: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
   async createAdmin(data: InsertAdmin): Promise<Admin> {
-    const [admin] = await db.insert(admins).values(data).returning();
-    return admin;
+    const admin = await AdminModel.create(data);
+    return toPlain<Admin>(admin);
   }
 
   async getAdminByEmail(email: string): Promise<Admin | undefined> {
-    return await db.query.admins.findFirst({ where: eq(admins.email, email) });
+    const admin = await AdminModel.findOne({ email });
+    return admin ? toPlain<Admin>(admin) : undefined;
   }
 
-  async getAdminById(id: number): Promise<Admin | undefined> {
-    return await db.query.admins.findFirst({ where: eq(admins.id, id) });
+  async getAdminById(id: string): Promise<Admin | undefined> {
+    const admin = await AdminModel.findById(id);
+    return admin ? toPlain<Admin>(admin) : undefined;
   }
 
   async createStudent(data: InsertStudent): Promise<Student> {
-    const [student] = await db.insert(students).values(data).returning();
-    return student;
+    const student = await StudentModel.create(data);
+    return toPlain<Student>(student);
   }
 
   async getStudentByEmail(email: string): Promise<Student | undefined> {
-    return await db.query.students.findFirst({ where: eq(students.email, email) });
+    const student = await StudentModel.findOne({ email });
+    return student ? toPlain<Student>(student) : undefined;
   }
 
-  async getStudentById(id: number): Promise<Student | undefined> {
-    return await db.query.students.findFirst({ where: eq(students.id, id) });
+  async getStudentById(id: string): Promise<Student | undefined> {
+    const student = await StudentModel.findById(id);
+    return student ? toPlain<Student>(student) : undefined;
   }
 
   async getStudentByRollNumber(rollNumber: string): Promise<Student | undefined> {
-    return await db.query.students.findFirst({ where: eq(students.rollNumber, rollNumber) });
+    const student = await StudentModel.findOne({ rollNumber });
+    return student ? toPlain<Student>(student) : undefined;
   }
 
   async getAllStudents(): Promise<Student[]> {
-    return await db.query.students.findMany({ orderBy: [desc(students.createdAt)] });
+    const students = await StudentModel.find().sort({ createdAt: -1 });
+    return toPlainArray<Student>(students);
   }
 
-  async updateStudent(id: number, data: Partial<InsertStudent>): Promise<Student | undefined> {
-    const [student] = await db.update(students).set({ ...data, updatedAt: new Date() }).where(eq(students.id, id)).returning();
-    return student;
+  async updateStudent(id: string, data: Partial<InsertStudent>): Promise<Student | undefined> {
+    const student = await StudentModel.findByIdAndUpdate(id, { ...data, updatedAt: new Date() }, { new: true });
+    return student ? toPlain<Student>(student) : undefined;
   }
 
   async countStudentsWithRegPrefix(prefix: string): Promise<number> {
-    const result = await db.select({ count: sql<number>`count(*)` }).from(students).where(like(students.registrationNumber, `${prefix}%`));
-    return Number(result[0]?.count || 0);
+    return await StudentModel.countDocuments({ registrationNumber: { $regex: `^${prefix}` } });
   }
 
   async countStudentsToday(): Promise<number> {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const result = await db.select({ count: sql<number>`count(*)` }).from(students).where(gte(students.createdAt, today));
-    return Number(result[0]?.count || 0);
+    return await StudentModel.countDocuments({ createdAt: { $gte: today } });
   }
 
   async countStudentsFeePaid(): Promise<number> {
-    const result = await db.select({ count: sql<number>`count(*)` }).from(students).where(eq(students.feePaid, true));
-    return Number(result[0]?.count || 0);
+    return await StudentModel.countDocuments({ feePaid: true });
   }
 
   async countActiveStudents(): Promise<number> {
-    const result = await db.select({ count: sql<number>`count(*)` }).from(students).where(eq(students.isActive, true));
-    return Number(result[0]?.count || 0);
+    return await StudentModel.countDocuments({ isActive: true });
   }
 
   async createResult(data: InsertResult): Promise<Result> {
-    const [result] = await db.insert(results).values(data).returning();
-    return result;
+    const result = await ResultModel.create(data);
+    return toPlain<Result>(result);
   }
 
-  async getResultsByStudentId(studentId: number, publishedOnly = false): Promise<Result[]> {
-    const conditions = publishedOnly
-      ? and(eq(results.studentId, studentId), eq(results.isPublished, true))
-      : eq(results.studentId, studentId);
-    return await db.query.results.findMany({ where: conditions, orderBy: [desc(results.createdAt)] });
+  async getResultsByStudentId(studentId: string, publishedOnly = false): Promise<Result[]> {
+    const query: any = { studentId };
+    if (publishedOnly) query.isPublished = true;
+    const results = await ResultModel.find(query).sort({ createdAt: -1 });
+    return toPlainArray<Result>(results);
   }
 
   async getAllResults(publishedOnly = false): Promise<Result[]> {
-    const conditions = publishedOnly ? eq(results.isPublished, true) : undefined;
-    return await db.query.results.findMany({ where: conditions, orderBy: [desc(results.createdAt)] });
+    const query = publishedOnly ? { isPublished: true } : {};
+    const results = await ResultModel.find(query).sort({ createdAt: -1 });
+    return toPlainArray<Result>(results);
   }
 
-  async updateResult(id: number, data: Partial<InsertResult>): Promise<Result | undefined> {
-    const [result] = await db.update(results).set(data).where(eq(results.id, id)).returning();
-    return result;
+  async updateResult(id: string, data: Partial<InsertResult>): Promise<Result | undefined> {
+    const result = await ResultModel.findByIdAndUpdate(id, data, { new: true });
+    return result ? toPlain<Result>(result) : undefined;
   }
 
-  async createAdmitCard(data: InsertAdmitCard): Promise<AdmitCard> {
-    const [admitCard] = await db.insert(admitCards).values(data).returning();
-    return admitCard;
+  async createAdmitCard(data: InsertAdmitCard): Promise<AdmitCardType> {
+    const admitCard = await AdmitCardModel.create(data);
+    return toPlain<AdmitCardType>(admitCard);
   }
 
-  async getAdmitCardsByStudentId(studentId: number): Promise<AdmitCard[]> {
-    return await db.query.admitCards.findMany({ where: eq(admitCards.studentId, studentId), orderBy: [desc(admitCards.uploadedAt)] });
+  async getAdmitCardsByStudentId(studentId: string): Promise<AdmitCardType[]> {
+    const admitCards = await AdmitCardModel.find({ studentId }).sort({ uploadedAt: -1 });
+    return toPlainArray<AdmitCardType>(admitCards);
   }
 
-  async getAllAdmitCards(): Promise<AdmitCard[]> {
-    return await db.query.admitCards.findMany({ orderBy: [desc(admitCards.uploadedAt)] });
+  async getAllAdmitCards(): Promise<AdmitCardType[]> {
+    const admitCards = await AdmitCardModel.find().sort({ uploadedAt: -1 });
+    return toPlainArray<AdmitCardType>(admitCards);
   }
 
-  async deleteAdmitCard(id: number): Promise<void> {
-    await db.delete(admitCards).where(eq(admitCards.id, id));
+  async deleteAdmitCard(id: string): Promise<void> {
+    await AdmitCardModel.findByIdAndDelete(id);
   }
 
   async createMembership(data: InsertMembership): Promise<Membership> {
-    const [membership] = await db.insert(memberships).values(data).returning();
-    return membership;
+    const membership = await MembershipModel.create(data);
+    return toPlain<Membership>(membership);
   }
 
-  async getMembershipByUserId(userId: number): Promise<Membership | undefined> {
-    return await db.query.memberships.findFirst({ where: eq(memberships.userId, userId) });
+  async getMembershipByUserId(userId: string): Promise<Membership | undefined> {
+    const membership = await MembershipModel.findOne({ userId });
+    return membership ? toPlain<Membership>(membership) : undefined;
   }
 
   async getAllMemberships(): Promise<Membership[]> {
-    return await db.query.memberships.findMany({ orderBy: [desc(memberships.createdAt)] });
+    const memberships = await MembershipModel.find().sort({ createdAt: -1 });
+    return toPlainArray<Membership>(memberships);
   }
 
-  async updateMembership(id: number, data: Partial<InsertMembership>): Promise<Membership | undefined> {
-    const [membership] = await db.update(memberships).set(data).where(eq(memberships.id, id)).returning();
-    return membership;
+  async updateMembership(id: string, data: Partial<InsertMembership>): Promise<Membership | undefined> {
+    const membership = await MembershipModel.findByIdAndUpdate(id, data, { new: true });
+    return membership ? toPlain<Membership>(membership) : undefined;
   }
 
   async countMemberships(): Promise<number> {
-    const result = await db.select({ count: sql<number>`count(*)` }).from(memberships);
-    return Number(result[0]?.count || 0);
+    return await MembershipModel.countDocuments();
   }
 
   async createMenuItem(data: InsertMenuItem): Promise<MenuItem> {
-    const [item] = await db.insert(menuItems).values(data).returning();
-    return item;
+    const item = await MenuItemModel.create(data);
+    return toPlain<MenuItem>(item);
   }
 
   async getActiveMenuItems(): Promise<MenuItem[]> {
-    return await db.query.menuItems.findMany({ where: eq(menuItems.isActive, true), orderBy: [menuItems.order] });
+    const items = await MenuItemModel.find({ isActive: true }).sort({ order: 1 });
+    return toPlainArray<MenuItem>(items);
   }
 
   async getAllMenuItems(): Promise<MenuItem[]> {
-    return await db.query.menuItems.findMany({ orderBy: [menuItems.order] });
+    const items = await MenuItemModel.find().sort({ order: 1 });
+    return toPlainArray<MenuItem>(items);
   }
 
-  async updateMenuItem(id: number, data: Partial<InsertMenuItem>): Promise<MenuItem | undefined> {
-    const [item] = await db.update(menuItems).set({ ...data, updatedAt: new Date() }).where(eq(menuItems.id, id)).returning();
-    return item;
+  async updateMenuItem(id: string, data: Partial<InsertMenuItem>): Promise<MenuItem | undefined> {
+    const item = await MenuItemModel.findByIdAndUpdate(id, { ...data, updatedAt: new Date() }, { new: true });
+    return item ? toPlain<MenuItem>(item) : undefined;
   }
 
-  async deleteMenuItem(id: number): Promise<void> {
-    await db.delete(menuItems).where(eq(menuItems.id, id));
+  async deleteMenuItem(id: string): Promise<void> {
+    await MenuItemModel.findByIdAndDelete(id);
   }
 
   async createAdminSetting(data: InsertAdminSetting): Promise<AdminSetting> {
-    const [setting] = await db.insert(adminSettings).values(data).returning();
-    return setting;
+    const setting = await AdminSettingModel.create(data);
+    return toPlain<AdminSetting>(setting);
   }
 
   async getAdminSettingByKey(key: string): Promise<AdminSetting | undefined> {
-    return await db.query.adminSettings.findFirst({ where: eq(adminSettings.key, key) });
+    const setting = await AdminSettingModel.findOne({ key });
+    return setting ? toPlain<AdminSetting>(setting) : undefined;
   }
 
   async getAllAdminSettings(): Promise<AdminSetting[]> {
-    return await db.query.adminSettings.findMany({ orderBy: [adminSettings.category, adminSettings.key] });
+    const settings = await AdminSettingModel.find().sort({ category: 1, key: 1 });
+    return toPlainArray<AdminSetting>(settings);
   }
 
   async updateAdminSettingByKey(key: string, data: Partial<InsertAdminSetting>): Promise<AdminSetting | undefined> {
-    const existing = await this.getAdminSettingByKey(key);
+    const existing = await AdminSettingModel.findOne({ key });
     if (!existing) {
-      const [setting] = await db.insert(adminSettings).values({ ...data, key, value: data.value || "", label: data.label || key } as InsertAdminSetting).returning();
-      return setting;
+      const setting = await AdminSettingModel.create({ ...data, key, value: data.value || "", label: data.label || key });
+      return toPlain<AdminSetting>(setting);
     }
-    const [setting] = await db.update(adminSettings).set({ ...data, updatedAt: new Date() }).where(eq(adminSettings.key, key)).returning();
-    return setting;
+    const setting = await AdminSettingModel.findOneAndUpdate({ key }, { ...data, updatedAt: new Date() }, { new: true });
+    return setting ? toPlain<AdminSetting>(setting) : undefined;
   }
 
   async createPaymentConfig(data: InsertPaymentConfig): Promise<PaymentConfig> {
-    const [config] = await db.insert(paymentConfigs).values(data).returning();
-    return config;
+    const config = await PaymentConfigModel.create(data);
+    return toPlain<PaymentConfig>(config);
   }
 
   async getPaymentConfigsByType(type: string): Promise<PaymentConfig[]> {
-    return await db.query.paymentConfigs.findMany({
-      where: and(eq(paymentConfigs.type, type as any), eq(paymentConfigs.isActive, true)),
-      orderBy: [paymentConfigs.order]
-    });
+    const configs = await PaymentConfigModel.find({ type, isActive: true }).sort({ order: 1 });
+    return toPlainArray<PaymentConfig>(configs);
   }
 
   async getAllPaymentConfigs(): Promise<PaymentConfig[]> {
-    return await db.query.paymentConfigs.findMany({ orderBy: [paymentConfigs.type, paymentConfigs.order] });
+    const configs = await PaymentConfigModel.find().sort({ type: 1, order: 1 });
+    return toPlainArray<PaymentConfig>(configs);
   }
 
-  async updatePaymentConfig(id: number, data: Partial<InsertPaymentConfig>): Promise<PaymentConfig | undefined> {
-    const [config] = await db.update(paymentConfigs).set({ ...data, updatedAt: new Date() }).where(eq(paymentConfigs.id, id)).returning();
-    return config;
+  async updatePaymentConfig(id: string, data: Partial<InsertPaymentConfig>): Promise<PaymentConfig | undefined> {
+    const config = await PaymentConfigModel.findByIdAndUpdate(id, { ...data, updatedAt: new Date() }, { new: true });
+    return config ? toPlain<PaymentConfig>(config) : undefined;
   }
 
-  async deletePaymentConfig(id: number): Promise<void> {
-    await db.delete(paymentConfigs).where(eq(paymentConfigs.id, id));
+  async deletePaymentConfig(id: string): Promise<void> {
+    await PaymentConfigModel.findByIdAndDelete(id);
   }
 
   async createContentSection(data: InsertContentSection): Promise<ContentSection> {
-    const [section] = await db.insert(contentSections).values(data).returning();
-    return section;
+    const section = await ContentSectionModel.create(data);
+    return toPlain<ContentSection>(section);
   }
 
   async getContentSectionsByKey(key: string): Promise<ContentSection[]> {
-    return await db.query.contentSections.findMany({
-      where: and(eq(contentSections.sectionKey, key as any), eq(contentSections.isActive, true)),
-      orderBy: [contentSections.order]
-    });
+    const sections = await ContentSectionModel.find({ sectionKey: key, isActive: true }).sort({ order: 1 });
+    return toPlainArray<ContentSection>(sections);
   }
 
   async getAllContentSections(): Promise<ContentSection[]> {
-    return await db.query.contentSections.findMany({ orderBy: [contentSections.sectionKey, contentSections.order] });
+    const sections = await ContentSectionModel.find().sort({ sectionKey: 1, order: 1 });
+    return toPlainArray<ContentSection>(sections);
   }
 
-  async updateContentSection(id: number, data: Partial<InsertContentSection>): Promise<ContentSection | undefined> {
-    const [section] = await db.update(contentSections).set({ ...data, updatedAt: new Date() }).where(eq(contentSections.id, id)).returning();
-    return section;
+  async updateContentSection(id: string, data: Partial<InsertContentSection>): Promise<ContentSection | undefined> {
+    const section = await ContentSectionModel.findByIdAndUpdate(id, { ...data, updatedAt: new Date() }, { new: true });
+    return section ? toPlain<ContentSection>(section) : undefined;
   }
 
-  async deleteContentSection(id: number): Promise<void> {
-    await db.delete(contentSections).where(eq(contentSections.id, id));
+  async deleteContentSection(id: string): Promise<void> {
+    await ContentSectionModel.findByIdAndDelete(id);
   }
 
   async createVolunteerApplication(data: InsertVolunteerApplication): Promise<VolunteerApplication> {
-    const [app] = await db.insert(volunteerApplications).values(data).returning();
-    return app;
+    const app = await VolunteerApplicationModel.create(data);
+    return toPlain<VolunteerApplication>(app);
   }
 
   async getAllVolunteerApplications(): Promise<VolunteerApplication[]> {
-    return await db.query.volunteerApplications.findMany({ orderBy: [desc(volunteerApplications.createdAt)] });
+    const apps = await VolunteerApplicationModel.find().sort({ createdAt: -1 });
+    return toPlainArray<VolunteerApplication>(apps);
   }
 
-  async updateVolunteerApplication(id: number, data: Partial<InsertVolunteerApplication>): Promise<VolunteerApplication | undefined> {
-    const [app] = await db.update(volunteerApplications).set({ ...data, updatedAt: new Date() }).where(eq(volunteerApplications.id, id)).returning();
-    return app;
+  async updateVolunteerApplication(id: string, data: Partial<InsertVolunteerApplication>): Promise<VolunteerApplication | undefined> {
+    const app = await VolunteerApplicationModel.findByIdAndUpdate(id, { ...data, updatedAt: new Date() }, { new: true });
+    return app ? toPlain<VolunteerApplication>(app) : undefined;
   }
 
   async createFeeStructure(data: InsertFeeStructure): Promise<FeeStructure> {
-    const [fee] = await db.insert(feeStructures).values(data).returning();
-    return fee;
+    const fee = await FeeStructureModel.create(data);
+    return toPlain<FeeStructure>(fee);
   }
 
   async getAllFeeStructures(): Promise<FeeStructure[]> {
-    return await db.query.feeStructures.findMany({ orderBy: [feeStructures.level] });
+    const fees = await FeeStructureModel.find().sort({ level: 1 });
+    return toPlainArray<FeeStructure>(fees);
   }
 
-  async updateFeeStructure(id: number, data: Partial<InsertFeeStructure>): Promise<FeeStructure | undefined> {
-    const [fee] = await db.update(feeStructures).set({ ...data, updatedAt: new Date() }).where(eq(feeStructures.id, id)).returning();
-    return fee;
+  async updateFeeStructure(id: string, data: Partial<InsertFeeStructure>): Promise<FeeStructure | undefined> {
+    const fee = await FeeStructureModel.findByIdAndUpdate(id, { ...data, updatedAt: new Date() }, { new: true });
+    return fee ? toPlain<FeeStructure>(fee) : undefined;
   }
 
   async createMembershipCard(data: InsertMembershipCard): Promise<MembershipCard> {
-    const [card] = await db.insert(membershipCards).values(data).returning();
-    return card;
+    const card = await MembershipCardModel.create(data);
+    return toPlain<MembershipCard>(card);
   }
 
-  async getMembershipCardByMembershipId(membershipId: number): Promise<MembershipCard | undefined> {
-    return await db.query.membershipCards.findFirst({ where: eq(membershipCards.membershipId, membershipId) });
+  async getMembershipCardByMembershipId(membershipId: string): Promise<MembershipCard | undefined> {
+    const card = await MembershipCardModel.findOne({ membershipId });
+    return card ? toPlain<MembershipCard>(card) : undefined;
   }
 
   async getAllMembershipCards(): Promise<MembershipCard[]> {
-    return await db.query.membershipCards.findMany({ orderBy: [desc(membershipCards.createdAt)] });
+    const cards = await MembershipCardModel.find().sort({ createdAt: -1 });
+    return toPlainArray<MembershipCard>(cards);
   }
 
-  async updateMembershipCard(id: number, data: Partial<InsertMembershipCard>): Promise<MembershipCard | undefined> {
-    const [card] = await db.update(membershipCards).set({ ...data, updatedAt: new Date() }).where(eq(membershipCards.id, id)).returning();
-    return card;
+  async updateMembershipCard(id: string, data: Partial<InsertMembershipCard>): Promise<MembershipCard | undefined> {
+    const card = await MembershipCardModel.findByIdAndUpdate(id, { ...data, updatedAt: new Date() }, { new: true });
+    return card ? toPlain<MembershipCard>(card) : undefined;
   }
 
   async createPage(data: InsertPage): Promise<Page> {
-    const [page] = await db.insert(pages).values(data).returning();
-    return page;
+    const page = await PageModel.create(data);
+    return toPlain<Page>(page);
   }
 
   async getPageBySlug(slug: string): Promise<Page | undefined> {
-    return await db.query.pages.findFirst({ where: eq(pages.slug, slug) });
+    const page = await PageModel.findOne({ slug });
+    return page ? toPlain<Page>(page) : undefined;
   }
 
   async getAllPages(): Promise<Page[]> {
-    return await db.query.pages.findMany({ orderBy: [pages.order] });
+    const pages = await PageModel.find().sort({ order: 1 });
+    return toPlainArray<Page>(pages);
   }
 
-  async updatePage(id: number, data: Partial<InsertPage>): Promise<Page | undefined> {
-    const [page] = await db.update(pages).set({ ...data, updatedAt: new Date() }).where(eq(pages.id, id)).returning();
-    return page;
+  async updatePage(id: string, data: Partial<InsertPage>): Promise<Page | undefined> {
+    const page = await PageModel.findByIdAndUpdate(id, { ...data, updatedAt: new Date() }, { new: true });
+    return page ? toPlain<Page>(page) : undefined;
   }
 
-  async deletePage(id: number): Promise<void> {
-    await db.delete(pages).where(eq(pages.id, id));
+  async deletePage(id: string): Promise<void> {
+    await PageModel.findByIdAndDelete(id);
   }
 
   async createContactInquiry(data: InsertContactInquiry): Promise<ContactInquiry> {
-    const [inquiry] = await db.insert(contactInquiries).values(data).returning();
-    return inquiry;
+    const inquiry = await ContactInquiryModel.create(data);
+    return toPlain<ContactInquiry>(inquiry);
   }
 
   async getAllContactInquiries(): Promise<ContactInquiry[]> {
-    return await db.query.contactInquiries.findMany({ orderBy: [desc(contactInquiries.createdAt)] });
+    const inquiries = await ContactInquiryModel.find().sort({ createdAt: -1 });
+    return toPlainArray<ContactInquiry>(inquiries);
   }
 
-  async updateContactInquiry(id: number, data: Partial<InsertContactInquiry>): Promise<ContactInquiry | undefined> {
-    const [inquiry] = await db.update(contactInquiries).set({ ...data, updatedAt: new Date() }).where(eq(contactInquiries.id, id)).returning();
-    return inquiry;
+  async updateContactInquiry(id: string, data: Partial<InsertContactInquiry>): Promise<ContactInquiry | undefined> {
+    const inquiry = await ContactInquiryModel.findByIdAndUpdate(id, { ...data, updatedAt: new Date() }, { new: true });
+    return inquiry ? toPlain<ContactInquiry>(inquiry) : undefined;
   }
 
   async createVolunteerAccount(data: InsertVolunteerAccount): Promise<VolunteerAccount> {
-    const [account] = await db.insert(volunteerAccounts).values(data).returning();
-    return account;
+    const account = await VolunteerAccountModel.create(data);
+    return toPlain<VolunteerAccount>(account);
   }
 
   async getVolunteerAccountByEmail(email: string): Promise<VolunteerAccount | undefined> {
-    return await db.query.volunteerAccounts.findFirst({ where: eq(volunteerAccounts.email, email) });
+    const account = await VolunteerAccountModel.findOne({ email });
+    return account ? toPlain<VolunteerAccount>(account) : undefined;
   }
 
-  async getVolunteerAccountById(id: number): Promise<VolunteerAccount | undefined> {
-    return await db.query.volunteerAccounts.findFirst({ where: eq(volunteerAccounts.id, id) });
+  async getVolunteerAccountById(id: string): Promise<VolunteerAccount | undefined> {
+    const account = await VolunteerAccountModel.findById(id);
+    return account ? toPlain<VolunteerAccount>(account) : undefined;
   }
 
   async getAllVolunteerAccounts(): Promise<VolunteerAccount[]> {
-    return await db.query.volunteerAccounts.findMany({ orderBy: [desc(volunteerAccounts.createdAt)] });
+    const accounts = await VolunteerAccountModel.find().sort({ createdAt: -1 });
+    return toPlainArray<VolunteerAccount>(accounts);
   }
 
-  async updateVolunteerAccount(id: number, data: Partial<InsertVolunteerAccount>): Promise<VolunteerAccount | undefined> {
-    const [account] = await db.update(volunteerAccounts).set({ ...data, updatedAt: new Date() }).where(eq(volunteerAccounts.id, id)).returning();
-    return account;
+  async updateVolunteerAccount(id: string, data: Partial<InsertVolunteerAccount>): Promise<VolunteerAccount | undefined> {
+    const account = await VolunteerAccountModel.findByIdAndUpdate(id, { ...data, updatedAt: new Date() }, { new: true });
+    return account ? toPlain<VolunteerAccount>(account) : undefined;
   }
 
   async createPaymentTransaction(data: InsertPaymentTransaction): Promise<PaymentTransaction> {
-    const [transaction] = await db.insert(paymentTransactions).values(data).returning();
-    return transaction;
+    const transaction = await PaymentTransactionModel.create(data);
+    return toPlain<PaymentTransaction>(transaction);
   }
 
-  async getPaymentTransactionById(id: number): Promise<PaymentTransaction | undefined> {
-    return await db.query.paymentTransactions.findFirst({ where: eq(paymentTransactions.id, id) });
+  async getPaymentTransactionById(id: string): Promise<PaymentTransaction | undefined> {
+    const transaction = await PaymentTransactionModel.findById(id);
+    return transaction ? toPlain<PaymentTransaction>(transaction) : undefined;
   }
 
   async getPaymentTransactionByTransactionId(transactionId: string): Promise<PaymentTransaction | undefined> {
-    return await db.query.paymentTransactions.findFirst({ where: eq(paymentTransactions.transactionId, transactionId) });
+    const transaction = await PaymentTransactionModel.findOne({ transactionId });
+    return transaction ? toPlain<PaymentTransaction>(transaction) : undefined;
   }
 
   async getAllPaymentTransactions(): Promise<PaymentTransaction[]> {
-    return await db.query.paymentTransactions.findMany({ orderBy: [desc(paymentTransactions.createdAt)] });
+    const transactions = await PaymentTransactionModel.find().sort({ createdAt: -1 });
+    return toPlainArray<PaymentTransaction>(transactions);
   }
 
   async getPaymentTransactionsByType(type: string): Promise<PaymentTransaction[]> {
-    return await db.query.paymentTransactions.findMany({
-      where: eq(paymentTransactions.type, type as any),
-      orderBy: [desc(paymentTransactions.createdAt)]
-    });
+    const transactions = await PaymentTransactionModel.find({ type }).sort({ createdAt: -1 });
+    return toPlainArray<PaymentTransaction>(transactions);
   }
 
   async getPaymentTransactionsByEmail(email: string): Promise<PaymentTransaction[]> {
-    return await db.query.paymentTransactions.findMany({
-      where: eq(paymentTransactions.email, email),
-      orderBy: [desc(paymentTransactions.createdAt)]
-    });
+    const transactions = await PaymentTransactionModel.find({ email }).sort({ createdAt: -1 });
+    return toPlainArray<PaymentTransaction>(transactions);
   }
 
   async getPendingPaymentTransactions(): Promise<PaymentTransaction[]> {
-    return await db.query.paymentTransactions.findMany({
-      where: eq(paymentTransactions.status, "pending"),
-      orderBy: [desc(paymentTransactions.createdAt)]
-    });
+    const transactions = await PaymentTransactionModel.find({ status: "pending" }).sort({ createdAt: -1 });
+    return toPlainArray<PaymentTransaction>(transactions);
   }
 
-  async updatePaymentTransaction(id: number, data: Partial<InsertPaymentTransaction>): Promise<PaymentTransaction | undefined> {
-    const [transaction] = await db.update(paymentTransactions).set({ ...data, updatedAt: new Date() }).where(eq(paymentTransactions.id, id)).returning();
-    return transaction;
+  async updatePaymentTransaction(id: string, data: Partial<InsertPaymentTransaction>): Promise<PaymentTransaction | undefined> {
+    const transaction = await PaymentTransactionModel.findByIdAndUpdate(id, { ...data, updatedAt: new Date() }, { new: true });
+    return transaction ? toPlain<PaymentTransaction>(transaction) : undefined;
   }
 
   async createTeamMember(data: InsertTeamMember): Promise<TeamMember> {
-    const [member] = await db.insert(teamMembers).values(data).returning();
-    return member;
+    const member = await TeamMemberModel.create(data);
+    return toPlain<TeamMember>(member);
   }
 
   async getAllTeamMembers(): Promise<TeamMember[]> {
-    return await db.query.teamMembers.findMany({ orderBy: [teamMembers.order] });
+    const members = await TeamMemberModel.find().sort({ order: 1 });
+    return toPlainArray<TeamMember>(members);
   }
 
   async getActiveTeamMembers(): Promise<TeamMember[]> {
-    return await db.query.teamMembers.findMany({
-      where: eq(teamMembers.isActive, true),
-      orderBy: [teamMembers.order]
-    });
+    const members = await TeamMemberModel.find({ isActive: true }).sort({ order: 1 });
+    return toPlainArray<TeamMember>(members);
   }
 
-  async updateTeamMember(id: number, data: Partial<InsertTeamMember>): Promise<TeamMember | undefined> {
-    const [member] = await db.update(teamMembers).set({ ...data, updatedAt: new Date() }).where(eq(teamMembers.id, id)).returning();
-    return member;
+  async updateTeamMember(id: string, data: Partial<InsertTeamMember>): Promise<TeamMember | undefined> {
+    const member = await TeamMemberModel.findByIdAndUpdate(id, { ...data, updatedAt: new Date() }, { new: true });
+    return member ? toPlain<TeamMember>(member) : undefined;
   }
 
-  async deleteTeamMember(id: number): Promise<void> {
-    await db.delete(teamMembers).where(eq(teamMembers.id, id));
+  async deleteTeamMember(id: string): Promise<void> {
+    await TeamMemberModel.findByIdAndDelete(id);
   }
 
   async createService(data: InsertService): Promise<Service> {
-    const [service] = await db.insert(services).values(data).returning();
-    return service;
+    const service = await ServiceModel.create(data);
+    return toPlain<Service>(service);
   }
 
   async getAllServices(): Promise<Service[]> {
-    return await db.query.services.findMany({ orderBy: [services.order] });
+    const services = await ServiceModel.find().sort({ order: 1 });
+    return toPlainArray<Service>(services);
   }
 
   async getActiveServices(): Promise<Service[]> {
-    return await db.query.services.findMany({
-      where: eq(services.isActive, true),
-      orderBy: [services.order]
-    });
+    const services = await ServiceModel.find({ isActive: true }).sort({ order: 1 });
+    return toPlainArray<Service>(services);
   }
 
-  async updateService(id: number, data: Partial<InsertService>): Promise<Service | undefined> {
-    const [service] = await db.update(services).set({ ...data, updatedAt: new Date() }).where(eq(services.id, id)).returning();
-    return service;
+  async updateService(id: string, data: Partial<InsertService>): Promise<Service | undefined> {
+    const service = await ServiceModel.findByIdAndUpdate(id, { ...data, updatedAt: new Date() }, { new: true });
+    return service ? toPlain<Service>(service) : undefined;
   }
 
-  async deleteService(id: number): Promise<void> {
-    await db.delete(services).where(eq(services.id, id));
+  async deleteService(id: string): Promise<void> {
+    await ServiceModel.findByIdAndDelete(id);
   }
 
   async createGalleryImage(data: InsertGalleryImage): Promise<GalleryImage> {
-    const [image] = await db.insert(galleryImages).values(data).returning();
-    return image;
+    const image = await GalleryImageModel.create(data);
+    return toPlain<GalleryImage>(image);
   }
 
   async getAllGalleryImages(): Promise<GalleryImage[]> {
-    return await db.query.galleryImages.findMany({ orderBy: [galleryImages.order] });
+    const images = await GalleryImageModel.find().sort({ order: 1 });
+    return toPlainArray<GalleryImage>(images);
   }
 
   async getGalleryImagesByCategory(category: string): Promise<GalleryImage[]> {
-    return await db.query.galleryImages.findMany({
-      where: eq(galleryImages.category, category),
-      orderBy: [galleryImages.order]
-    });
+    const images = await GalleryImageModel.find({ category }).sort({ order: 1 });
+    return toPlainArray<GalleryImage>(images);
   }
 
   async getActiveGalleryImages(): Promise<GalleryImage[]> {
-    return await db.query.galleryImages.findMany({
-      where: eq(galleryImages.isActive, true),
-      orderBy: [galleryImages.order]
-    });
+    const images = await GalleryImageModel.find({ isActive: true }).sort({ order: 1 });
+    return toPlainArray<GalleryImage>(images);
   }
 
-  async updateGalleryImage(id: number, data: Partial<InsertGalleryImage>): Promise<GalleryImage | undefined> {
-    const [image] = await db.update(galleryImages).set({ ...data, updatedAt: new Date() }).where(eq(galleryImages.id, id)).returning();
-    return image;
+  async updateGalleryImage(id: string, data: Partial<InsertGalleryImage>): Promise<GalleryImage | undefined> {
+    const image = await GalleryImageModel.findByIdAndUpdate(id, { ...data, updatedAt: new Date() }, { new: true });
+    return image ? toPlain<GalleryImage>(image) : undefined;
   }
 
-  async deleteGalleryImage(id: number): Promise<void> {
-    await db.delete(galleryImages).where(eq(galleryImages.id, id));
+  async deleteGalleryImage(id: string): Promise<void> {
+    await GalleryImageModel.findByIdAndDelete(id);
   }
 }
 
