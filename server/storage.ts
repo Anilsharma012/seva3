@@ -4,14 +4,14 @@ import {
   admins, students, results, admitCards, memberships, menuItems,
   adminSettings, paymentConfigs, contentSections, volunteerApplications,
   feeStructures, membershipCards, pages, contactInquiries,
-  volunteerAccounts, paymentTransactions, teamMembers, services,
+  volunteerAccounts, paymentTransactions, teamMembers, services, galleryImages,
   InsertAdmin, InsertStudent, InsertResult, InsertAdmitCard, InsertMembership,
   InsertMenuItem, InsertAdminSetting, InsertPaymentConfig, InsertContentSection,
   InsertVolunteerApplication, InsertFeeStructure, InsertMembershipCard, InsertPage, InsertContactInquiry,
-  InsertVolunteerAccount, InsertPaymentTransaction, InsertTeamMember, InsertService,
+  InsertVolunteerAccount, InsertPaymentTransaction, InsertTeamMember, InsertService, InsertGalleryImage,
   Admin, Student, Result, AdmitCard, Membership, MenuItem, AdminSetting, PaymentConfig,
   ContentSection, VolunteerApplication, FeeStructure, MembershipCard, Page, ContactInquiry,
-  VolunteerAccount, PaymentTransaction, TeamMember, Service
+  VolunteerAccount, PaymentTransaction, TeamMember, Service, GalleryImage
 } from "@shared/schema";
 
 export interface IStorage {
@@ -118,6 +118,13 @@ export interface IStorage {
   getActiveServices(): Promise<Service[]>;
   updateService(id: number, data: Partial<InsertService>): Promise<Service | undefined>;
   deleteService(id: number): Promise<void>;
+
+  createGalleryImage(data: InsertGalleryImage): Promise<GalleryImage>;
+  getAllGalleryImages(): Promise<GalleryImage[]>;
+  getGalleryImagesByCategory(category: string): Promise<GalleryImage[]>;
+  getActiveGalleryImages(): Promise<GalleryImage[]>;
+  updateGalleryImage(id: number, data: Partial<InsertGalleryImage>): Promise<GalleryImage | undefined>;
+  deleteGalleryImage(id: number): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -534,6 +541,38 @@ export class DatabaseStorage implements IStorage {
 
   async deleteService(id: number): Promise<void> {
     await db.delete(services).where(eq(services.id, id));
+  }
+
+  async createGalleryImage(data: InsertGalleryImage): Promise<GalleryImage> {
+    const [image] = await db.insert(galleryImages).values(data).returning();
+    return image;
+  }
+
+  async getAllGalleryImages(): Promise<GalleryImage[]> {
+    return await db.query.galleryImages.findMany({ orderBy: [galleryImages.order] });
+  }
+
+  async getGalleryImagesByCategory(category: string): Promise<GalleryImage[]> {
+    return await db.query.galleryImages.findMany({
+      where: eq(galleryImages.category, category),
+      orderBy: [galleryImages.order]
+    });
+  }
+
+  async getActiveGalleryImages(): Promise<GalleryImage[]> {
+    return await db.query.galleryImages.findMany({
+      where: eq(galleryImages.isActive, true),
+      orderBy: [galleryImages.order]
+    });
+  }
+
+  async updateGalleryImage(id: number, data: Partial<InsertGalleryImage>): Promise<GalleryImage | undefined> {
+    const [image] = await db.update(galleryImages).set({ ...data, updatedAt: new Date() }).where(eq(galleryImages.id, id)).returning();
+    return image;
+  }
+
+  async deleteGalleryImage(id: number): Promise<void> {
+    await db.delete(galleryImages).where(eq(galleryImages.id, id));
   }
 }
 

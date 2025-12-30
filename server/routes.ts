@@ -1253,4 +1253,59 @@ export async function registerRoutes(app: Express): Promise<void> {
       res.status(500).json({ error: "Failed to check transaction" });
     }
   });
+
+  // Gallery Images API
+  app.get("/api/public/gallery", async (req, res) => {
+    try {
+      const images = await storage.getActiveGalleryImages();
+      res.json(images);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch gallery images" });
+    }
+  });
+
+  app.get("/api/public/gallery/:category", async (req, res) => {
+    try {
+      const images = await storage.getGalleryImagesByCategory(req.params.category);
+      res.json(images);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch gallery images" });
+    }
+  });
+
+  app.get("/api/admin/gallery", authMiddleware, adminOnly, async (req: AuthRequest, res) => {
+    try {
+      const images = await storage.getAllGalleryImages();
+      res.json(images);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch gallery images" });
+    }
+  });
+
+  app.post("/api/admin/gallery", authMiddleware, adminOnly, async (req: AuthRequest, res) => {
+    try {
+      const image = await storage.createGalleryImage(req.body);
+      res.status(201).json(image);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create gallery image" });
+    }
+  });
+
+  app.patch("/api/admin/gallery/:id", authMiddleware, adminOnly, async (req: AuthRequest, res) => {
+    try {
+      const image = await storage.updateGalleryImage(parseInt(req.params.id), req.body);
+      res.json(image);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update gallery image" });
+    }
+  });
+
+  app.delete("/api/admin/gallery/:id", authMiddleware, adminOnly, async (req: AuthRequest, res) => {
+    try {
+      await storage.deleteGalleryImage(parseInt(req.params.id));
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete gallery image" });
+    }
+  });
 }

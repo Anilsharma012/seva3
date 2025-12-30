@@ -300,6 +300,18 @@ export const services = pgTable("services", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+export const galleryImages = pgTable("gallery_images", {
+  id: serial("id").primaryKey(),
+  imageUrl: text("image_url").notNull(),
+  title: text("title").notNull(),
+  category: text("category").notNull(),
+  date: text("date"),
+  order: integer("order").default(0).notNull(),
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
 export const insertAdminSchema = createInsertSchema(admins).omit({ id: true, createdAt: true });
 export const insertStudentSchema = createInsertSchema(students).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertResultSchema = createInsertSchema(results).omit({ id: true, createdAt: true });
@@ -318,6 +330,7 @@ export const insertVolunteerAccountSchema = createInsertSchema(volunteerAccounts
 export const insertPaymentTransactionSchema = createInsertSchema(paymentTransactions).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertTeamMemberSchema = createInsertSchema(teamMembers).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertServiceSchema = createInsertSchema(services).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertGalleryImageSchema = createInsertSchema(galleryImages).omit({ id: true, createdAt: true, updatedAt: true });
 
 export type InsertAdmin = z.infer<typeof insertAdminSchema>;
 export type InsertStudent = z.infer<typeof insertStudentSchema>;
@@ -337,6 +350,7 @@ export type InsertVolunteerAccount = z.infer<typeof insertVolunteerAccountSchema
 export type InsertPaymentTransaction = z.infer<typeof insertPaymentTransactionSchema>;
 export type InsertTeamMember = z.infer<typeof insertTeamMemberSchema>;
 export type InsertService = z.infer<typeof insertServiceSchema>;
+export type InsertGalleryImage = z.infer<typeof insertGalleryImageSchema>;
 
 export type Admin = typeof admins.$inferSelect;
 export type Student = typeof students.$inferSelect;
@@ -356,3 +370,4 @@ export type VolunteerAccount = typeof volunteerAccounts.$inferSelect;
 export type PaymentTransaction = typeof paymentTransactions.$inferSelect;
 export type TeamMember = typeof teamMembers.$inferSelect;
 export type Service = typeof services.$inferSelect;
+export type GalleryImage = typeof galleryImages.$inferSelect;

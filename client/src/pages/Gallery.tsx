@@ -1,17 +1,10 @@
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 import Layout from "@/components/layout/Layout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
-import { X, ZoomIn } from "lucide-react";
-// Real uploaded images
-import newsWatermelon from "@/assets/news-watermelon.jpeg";
-import freeEducation from "@/assets/free-education-class.jpeg";
-import watermelonDist from "@/assets/watermelon-distribution.jpeg";
-import communityReal from "@/assets/community-service-real.jpeg";
-import eventCeremony from "@/assets/event-ceremony.jpeg";
-import tributeEvent from "@/assets/tribute-event.jpeg";
-import educationBanner from "@/assets/education-banner.jpeg";
-import chairman from "@/assets/chairman.jpeg";
+import { X, ZoomIn, Loader2 } from "lucide-react";
 
 const categories = [
   { id: "all", label: "All" },
@@ -22,28 +15,18 @@ const categories = [
   { id: "education", label: "Education" },
 ];
 
-const galleryItems = [
-  { id: 1, image: newsWatermelon, title: "तरबूज वितरण - समाचार कवरेज", category: "news", date: "2024" },
-  { id: 2, image: freeEducation, title: "निशुल्क शिक्षा कक्षा - भूना", category: "education", date: "2024" },
-  { id: 3, image: watermelonDist, title: "बच्चों को तरबूज वितरण", category: "events", date: "2024" },
-  { id: 4, image: communityReal, title: "समुदाय सेवा कार्यक्रम", category: "events", date: "2024" },
-  { id: 5, image: eventCeremony, title: "पुरस्कार वितरण समारोह", category: "events", date: "2024" },
-  { id: 6, image: tributeEvent, title: "श्रद्धांजलि कार्यक्रम", category: "events", date: "2024" },
-  { id: 7, image: educationBanner, title: "शिक्षा जागरूकता अभियान", category: "education", date: "2024" },
-  { id: 8, image: chairman, title: "अध्यक्ष श्री सुखविंदर बेस", category: "events", date: "2024" },
-  { id: 9, image: freeEducation, title: "गुरु रविदास धर्मशाला में शिक्षा", category: "education", date: "2023" },
-  { id: 10, image: watermelonDist, title: "ईंट भट्टे पर सेवा", category: "events", date: "2023" },
-  { id: 11, image: communityReal, title: "सामुदायिक सेवा", category: "events", date: "2023" },
-  { id: 12, image: newsWatermelon, title: "पल पल न्यूज में कवरेज", category: "news", date: "2023" },
-];
-
 export default function Gallery() {
   const [activeCategory, setActiveCategory] = useState("all");
-  const [selectedImage, setSelectedImage] = useState<typeof galleryItems[0] | null>(null);
+  const [selectedImage, setSelectedImage] = useState<any | null>(null);
+
+  const { data: galleryItems = [], isLoading } = useQuery({
+    queryKey: ["/api/public/gallery"],
+    queryFn: async () => apiRequest("GET", "/api/public/gallery", {}),
+  });
 
   const filteredItems = activeCategory === "all" 
     ? galleryItems 
-    : galleryItems.filter(item => item.category === activeCategory);
+    : galleryItems.filter((item: any) => item.category === activeCategory);
 
   return (
     <Layout>
@@ -84,8 +67,17 @@ export default function Gallery() {
           </Tabs>
 
           {/* Gallery Grid */}
+          {isLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
+          ) : filteredItems.length === 0 ? (
+            <div className="py-12 text-center text-muted-foreground">
+              No images available in this category
+            </div>
+          ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-            {filteredItems.map((item) => (
+            {filteredItems.map((item: any) => (
               <Dialog key={item.id}>
                 <DialogTrigger asChild>
                   <div 
@@ -110,7 +102,7 @@ export default function Gallery() {
                 <DialogContent className="max-w-4xl bg-card border-border p-0 overflow-hidden">
                   <div className="relative">
                     <img
-                      src={item.image}
+                      src={item.imageUrl}
                       alt={item.title}
                       className="w-full h-auto max-h-[80vh] object-contain"
                     />
@@ -123,11 +115,6 @@ export default function Gallery() {
               </Dialog>
             ))}
           </div>
-
-          {filteredItems.length === 0 && (
-            <div className="text-center py-20">
-              <p className="text-muted-foreground text-lg">इस श्रेणी में कोई फोटो नहीं मिली।</p>
-            </div>
           )}
         </div>
       </section>
