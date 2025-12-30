@@ -2,6 +2,7 @@ import type { Express } from "express";
 import bcrypt from "bcryptjs";
 import { storage } from "./storage";
 import { authMiddleware, adminOnly, generateToken, AuthRequest } from "./middleware/auth";
+import { insertGalleryImageSchema } from "@shared/schema";
 import { 
   sendStudentRegistrationEmail, 
   sendVolunteerRegistrationEmail, 
@@ -1284,10 +1285,12 @@ export async function registerRoutes(app: Express): Promise<void> {
 
   app.post("/api/admin/gallery", authMiddleware, adminOnly, async (req: AuthRequest, res) => {
     try {
-      const image = await storage.createGalleryImage(req.body);
+      const validated = insertGalleryImageSchema.parse(req.body);
+      const image = await storage.createGalleryImage(validated);
       res.status(201).json(image);
     } catch (error) {
-      res.status(500).json({ error: "Failed to create gallery image" });
+      console.error("Gallery image creation error:", error);
+      res.status(400).json({ error: "Invalid gallery image data" });
     }
   });
 

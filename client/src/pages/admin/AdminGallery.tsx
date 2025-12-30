@@ -37,6 +37,7 @@ export default function AdminGallery() {
   });
   const [dialogOpen, setDialogOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [objectPathMap, setObjectPathMap] = useState<Record<string, string>>({});
 
   const { data: images = [], isLoading } = useQuery({
     queryKey: ["/api/admin/gallery"],
@@ -104,6 +105,11 @@ export default function AdminGallery() {
                         }),
                       });
                       const data = await response.json();
+                      // Store the objectPath for this file
+                      setObjectPathMap(prev => ({
+                        ...prev,
+                        [file.id]: data.objectPath
+                      }));
                       return {
                         method: "PUT",
                         url: data.uploadURL,
@@ -113,8 +119,8 @@ export default function AdminGallery() {
                     onComplete={(result) => {
                       const uploadedFile = result.successful?.[0];
                       if (uploadedFile && result.successful && result.successful.length > 0) {
-                        // Get the object path from the presigned URL response
-                        const imagePath = `/objects/${uploadedFile.name}`;
+                        // Use the objectPath we stored during upload URL request
+                        const imagePath = objectPathMap[uploadedFile.id] || `/objects/${uploadedFile.name}`;
                         setNewImage({...newImage, imageUrl: imagePath});
                         toast({ title: "Success", description: "Image uploaded successfully" });
                       }
