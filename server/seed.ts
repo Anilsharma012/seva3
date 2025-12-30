@@ -10,9 +10,10 @@ const defaultMenuItems = [
   { title: "Fees", titleHindi: "शुल्क", path: "/admin/fees", iconKey: "CreditCard", order: 6, group: "main" },
   { title: "Memberships", titleHindi: "सदस्यता", path: "/admin/memberships", iconKey: "Users", order: 7, group: "main" },
   { title: "Volunteers", titleHindi: "स्वयंसेवक", path: "/admin/volunteers", iconKey: "Heart", order: 8, group: "main" },
-  { title: "Content", titleHindi: "सामग्री", path: "/admin/content", iconKey: "FileEdit", order: 9, group: "main" },
-  { title: "Pages", titleHindi: "पृष्ठ", path: "/admin/pages", iconKey: "Layout", order: 10, group: "main" },
-  { title: "Payments", titleHindi: "भुगतान", path: "/admin/payments", iconKey: "Wallet", order: 11, group: "main" },
+  { title: "Gallery", titleHindi: "गैलरी", path: "/admin/gallery", iconKey: "Images", order: 9, group: "main" },
+  { title: "Content", titleHindi: "सामग्री", path: "/admin/content", iconKey: "FileEdit", order: 10, group: "main" },
+  { title: "Pages", titleHindi: "पृष्ठ", path: "/admin/pages", iconKey: "Layout", order: 11, group: "main" },
+  { title: "Payments", titleHindi: "भुगतान", path: "/admin/payments", iconKey: "Wallet", order: 12, group: "main" },
   { title: "Settings", titleHindi: "सेटिंग्स", path: "/admin/settings", iconKey: "Settings", order: 100, group: "system" },
 ];
 
