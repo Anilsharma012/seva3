@@ -1,6 +1,7 @@
 import express, { type Request, Response, NextFunction } from "express";
 import cors from "cors";
 import { registerRoutes } from "./routes";
+import { registerObjectStorageRoutes } from "./replit_integrations/object_storage";
 import { setupVite, serveStatic, log } from "./vite";
 import { connectDB } from "./db";
 import { seedDatabase } from "./seed";
@@ -43,6 +44,7 @@ app.use((req, res, next) => {
 (async () => {
   await connectDB();
   await seedDatabase();
+  registerObjectStorageRoutes(app);
   await registerRoutes(app);
 
   app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {

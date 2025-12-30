@@ -6,8 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Loader2, Plus, Trash2, Eye } from "lucide-react";
+import { Loader2, Plus, Trash2, Eye, Upload } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { ObjectUploader } from "@/components/ObjectUploader";
 
 interface GalleryImage {
   id: number;
@@ -35,6 +36,7 @@ export default function AdminGallery() {
     date: new Date().getFullYear().toString(),
   });
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [uploading, setUploading] = useState(false);
 
   const { data: images = [], isLoading } = useQuery({
     queryKey: ["/api/admin/gallery"],
@@ -88,13 +90,44 @@ export default function AdminGallery() {
               </DialogHeader>
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium mb-2">Image URL</label>
-                  <Input
-                    placeholder="https://example.com/image.jpg"
-                    value={newImage.imageUrl}
-                    onChange={(e) => setNewImage({...newImage, imageUrl: e.target.value})}
-                    data-testid="input-image-url"
-                  />
+                  <label className="block text-sm font-medium mb-2">Upload Image</label>
+                  <ObjectUploader
+                    maxFileSize={10485760}
+                    onGetUploadParameters={async (file) => {
+                      const response = await fetch("/api/uploads/request-url", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                          name: file.name,
+                          size: file.size,
+                          contentType: file.type,
+                        }),
+                      });
+                      const data = await response.json();
+                      return {
+                        method: "PUT",
+                        url: data.uploadURL,
+                        headers: { "Content-Type": file.type || "application/octet-stream" },
+                      };
+                    }}
+                    onComplete={(result) => {
+                      const uploadedFile = result.successful?.[0];
+                      if (uploadedFile && result.successful && result.successful.length > 0) {
+                        // Get the object path from the presigned URL response
+                        const imagePath = `/objects/${uploadedFile.name}`;
+                        setNewImage({...newImage, imageUrl: imagePath});
+                        toast({ title: "Success", description: "Image uploaded successfully" });
+                      }
+                    }}
+                  >
+                    <Upload className="w-4 h-4 mr-2" />
+                    Choose Image
+                  </ObjectUploader>
+                  {newImage.imageUrl && (
+                    <p className="text-sm text-muted-foreground mt-2">
+                      Image uploaded: {newImage.imageUrl.split('/').pop()}
+                    </p>
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-2">Title / Description</label>
@@ -129,12 +162,12 @@ export default function AdminGallery() {
                 </div>
                 <Button
                   onClick={() => createMutation.mutate()}
-                  disabled={createMutation.isPending || !newImage.imageUrl || !newImage.title}
+                  disabled={createMutation.isPending || uploading || !newImage.imageUrl || !newImage.title}
                   className="w-full"
                   data-testid="button-submit-image"
                 >
                   {createMutation.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Plus className="w-4 h-4 mr-2" />}
-                  Add Image
+                  Add to Gallery
                 </Button>
               </div>
             </DialogContent>
