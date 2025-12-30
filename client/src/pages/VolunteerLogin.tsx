@@ -42,7 +42,7 @@ export default function VolunteerLogin() {
 
       if (res.ok) {
         localStorage.setItem("volunteer_token", data.token);
-        localStorage.setItem("volunteer_user", JSON.stringify(data.volunteer));
+        localStorage.setItem("volunteer_user", JSON.stringify(data.user));
         toast({
           title: "सफल!",
           description: "लॉगिन सफल रहा। डैशबोर्ड पर जा रहे हैं...",

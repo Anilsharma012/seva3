@@ -95,6 +95,7 @@ export default function Volunteer() {
           skills: formData.interests.join(", "),
           message: formData.message,
           password: formData.password,
+          confirmPassword: formData.confirmPassword,
         }),
       });
       

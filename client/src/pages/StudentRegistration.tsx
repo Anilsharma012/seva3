@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import Layout from "@/components/layout/Layout";
@@ -9,8 +9,22 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { GraduationCap, CheckCircle, Copy } from "lucide-react";
+import { GraduationCap, CheckCircle, Copy, Loader2, QrCode, Building } from "lucide-react";
 import logo from "@/assets/logo.jpeg";
+
+interface PaymentConfig {
+  id: number;
+  type: string;
+  name: string;
+  nameHindi?: string;
+  qrCodeUrl?: string;
+  upiId?: string;
+  bankName?: string;
+  accountNumber?: string;
+  ifscCode?: string;
+  accountHolderName?: string;
+  isActive: boolean;
+}
 
 const feeLevels = [
   { id: "village", name: "Village Level / ग्राम स्तर", amount: 99 },
@@ -23,9 +37,33 @@ export default function StudentRegistration() {
   const [step, setStep] = useState(1);
   const [isProcessing, setIsProcessing] = useState(false);
   const [registrationData, setRegistrationData] = useState<{ email: string; registrationNumber: string } | null>(null);
+  const [paymentConfigs, setPaymentConfigs] = useState<PaymentConfig[]>([]);
+  const [paymentLoading, setPaymentLoading] = useState(true);
   const navigate = useNavigate();
   const { toast } = useToast();
   const { signup } = useAuth();
+
+  useEffect(() => {
+    const fetchPaymentConfigs = async () => {
+      try {
+        const res = await fetch("/api/public/payment-config/fee");
+        if (res.ok) {
+          const data = await res.json();
+          setPaymentConfigs(data);
+        }
+      } catch (error) {
+        console.error("Error fetching payment configs:", error);
+      } finally {
+        setPaymentLoading(false);
+      }
+    };
+    fetchPaymentConfigs();
+  }, []);
+
+  const feeConfig = paymentConfigs[0];
+  const hasQR = feeConfig?.qrCodeUrl;
+  const hasUPI = feeConfig?.upiId;
+  const hasBank = feeConfig?.bankName;
 
   const [formData, setFormData] = useState({
     studentName: "",
@@ -99,6 +137,29 @@ export default function StudentRegistration() {
       });
 
       if (result.success) {
+        // Create payment transaction for admin approval
+        try {
+          await fetch("/api/public/payment-transaction", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              type: "fee",
+              name: formData.studentName,
+              email: formData.email,
+              phone: formData.phone,
+              amount: selectedFeeLevel?.amount || 0,
+              transactionId: formData.transactionId,
+              paymentMethod: "upi",
+              purpose: `Student Registration - ${selectedFeeLevel?.name || formData.feeLevel}`,
+              fatherName: formData.fatherName,
+              address: formData.address,
+              city: formData.city,
+            }),
+          });
+        } catch (txError) {
+          console.error("Payment transaction creation failed:", txError);
+        }
+
         setRegistrationData({ 
           email: formData.email,
           registrationNumber: result.registrationNumber || ""
@@ -107,7 +168,7 @@ export default function StudentRegistration() {
 
         toast({
           title: "रजिस्ट्रेशन सफल!",
-          description: "आपका रजिस्ट्रेशन पूरा हो गया है",
+          description: "आपका रजिस्ट्रेशन पूरा हो गया है। भुगतान की पुष्टि होने पर लॉगिन कर सकते हैं।",
         });
       } else {
         throw new Error(result.error);
@@ -270,38 +331,96 @@ export default function StudentRegistration() {
                 <CardDescription>QR Code स्कैन करें या UPI ID पर भुगतान करें</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
-                <div className="text-center">
-                  <div className="bg-muted p-6 rounded-lg inline-block mb-4">
-                    <div className="w-48 h-48 bg-foreground/10 flex items-center justify-center rounded">
-                      <span className="text-muted-foreground">QR Code</span>
-                    </div>
-                  </div>
-                  <p className="text-2xl font-bold text-secondary">Rs.{selectedFeeLevel?.amount}</p>
+                <div className="bg-secondary/10 p-4 rounded-lg text-center">
+                  <p className="text-lg text-muted-foreground">Registration Fee / रजिस्ट्रेशन शुल्क</p>
+                  <p className="text-3xl font-bold text-secondary">Rs.{selectedFeeLevel?.amount}</p>
                 </div>
+
+                {paymentLoading ? (
+                  <div className="flex justify-center py-8">
+                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                  </div>
+                ) : (
+                  <div className="space-y-6">
+                    {/* QR Code Section */}
+                    {hasQR && (
+                      <div className="text-center">
+                        <div className="flex items-center justify-center gap-2 mb-4">
+                          <QrCode className="h-5 w-5 text-primary" />
+                          <span className="font-medium">Scan QR Code / QR स्कैन करें</span>
+                        </div>
+                        <div className="bg-white p-4 rounded-lg inline-block shadow-md">
+                          <img 
+                            src={feeConfig.qrCodeUrl} 
+                            alt="Payment QR Code" 
+                            className="w-48 h-48 object-contain"
+                            data-testid="img-qr-code"
+                          />
+                        </div>
+                        <p className="text-sm text-muted-foreground mt-2">
+                          PhonePe / Google Pay / Paytm / BHIM से स्कैन करें
+                        </p>
+                      </div>
+                    )}
+
+                    {/* UPI ID Section */}
+                    {hasUPI && (
+                      <div className="space-y-2">
+                        <Label>UPI ID</Label>
+                        <div className="flex gap-2">
+                          <Input value={feeConfig.upiId} readOnly className="bg-muted font-mono" data-testid="input-upi" />
+                          <Button variant="outline" onClick={() => copyToClipboard(feeConfig.upiId!)} data-testid="button-copy-upi">
+                            <Copy className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Bank Details Section */}
+                    {hasBank && (
+                      <div className="border-t pt-4 space-y-4">
+                        <h4 className="font-semibold flex items-center gap-2">
+                          <Building className="h-5 w-5" />
+                          Bank Details / बैंक विवरण
+                        </h4>
+                        <div className="bg-muted/50 rounded-lg p-4 text-sm space-y-2">
+                          <div className="flex flex-wrap justify-between gap-1">
+                            <span className="text-muted-foreground">Account Name:</span>
+                            <span className="font-medium">{feeConfig.accountHolderName}</span>
+                          </div>
+                          <div className="flex flex-wrap justify-between gap-1">
+                            <span className="text-muted-foreground">Bank:</span>
+                            <span className="font-medium">{feeConfig.bankName}</span>
+                          </div>
+                          <div className="flex flex-wrap justify-between gap-1">
+                            <span className="text-muted-foreground">Account No:</span>
+                            <span className="font-mono font-medium">{feeConfig.accountNumber}</span>
+                          </div>
+                          <div className="flex flex-wrap justify-between gap-1">
+                            <span className="text-muted-foreground">IFSC:</span>
+                            <span className="font-mono font-medium">{feeConfig.ifscCode}</span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* No Payment Config Warning */}
+                    {!hasQR && !hasUPI && !hasBank && (
+                      <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 p-4 rounded-lg text-center">
+                        <p className="text-amber-700 dark:text-amber-300 text-sm">
+                          Payment configuration not available. Please contact admin.
+                          <br />
+                          भुगतान सेटिंग उपलब्ध नहीं है। कृपया एडमिन से संपर्क करें।
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 <div className="space-y-2">
-                  <Label>UPI ID</Label>
-                  <div className="flex gap-2">
-                    <Input value="manavwelfare@upi" readOnly className="bg-muted" data-testid="input-upi" />
-                    <Button variant="outline" onClick={() => copyToClipboard("manavwelfare@upi")} data-testid="button-copy-upi">
-                      <Copy className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-
-                <div className="border-t pt-4 space-y-4">
-                  <h4 className="font-semibold">Bank Details / बैंक विवरण</h4>
-                  <div className="text-sm space-y-1">
-                    <p><strong>Account Name:</strong> Manav Welfare Seva Society</p>
-                    <p><strong>Account No:</strong> XXXXXXXXXX</p>
-                    <p><strong>IFSC:</strong> XXXXXXX</p>
-                    <p><strong>Bank:</strong> State Bank of India</p>
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="transactionId">Transaction ID / UPI Reference No. *</Label>
-                  <Input id="transactionId" name="transactionId" value={formData.transactionId} onChange={handleChange} placeholder="Transaction ID दर्ज करें" required data-testid="input-transaction-id" />
+                  <Label htmlFor="transactionId">Transaction ID / UTR Number *</Label>
+                  <Input id="transactionId" name="transactionId" value={formData.transactionId} onChange={handleChange} placeholder="Transaction/UTR ID दर्ज करें" required data-testid="input-transaction-id" />
+                  <p className="text-xs text-muted-foreground">भुगतान करने के बाद Transaction ID या UTR Number डालें</p>
                 </div>
 
                 <div className="flex gap-4">
