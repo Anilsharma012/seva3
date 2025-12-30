@@ -49,6 +49,16 @@ export function registerObjectStorageRoutes(app: Express): void {
 
       // Extract object path from the presigned URL for later reference
       const objectPath = objectStorageService.normalizeObjectEntityPath(uploadURL);
+      
+      // Generate a presigned GET URL for reading the file after upload
+      // Extract bucket and object name from the normalized path
+      const parts = objectPath.slice(1).split("/");
+      const entityId = parts.slice(1).join("/");
+      let entityDir = objectStorageService.getPrivateObjectDir();
+      if (!entityDir.endsWith("/")) {
+        entityDir = `${entityDir}/`;
+      }
+      const fullPath = `${entityDir}${entityId}`;
 
       res.json({
         uploadURL,
@@ -70,8 +80,9 @@ export function registerObjectStorageRoutes(app: Express): void {
    */
   app.use("/objects", async (req, res) => {
     try {
-      // Build the full path from the request
+      // Build the full path from the request (req.path already includes /uploads/uuid etc)
       const objectPath = `/objects${req.path}`;
+      console.log("Serving object:", objectPath);
       const objectFile = await objectStorageService.getObjectEntityFile(objectPath);
       await objectStorageService.downloadObject(objectFile, res);
     } catch (error) {
