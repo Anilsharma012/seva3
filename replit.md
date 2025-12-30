@@ -8,6 +8,15 @@ This is a full-stack education management system for Manav Welfare Seva Society,
 - **Demo Student Login**: student@mwss.org / Student@123
 
 ## Recent Changes
+- **December 30, 2024**: Email notification system
+  - Added nodemailer integration with Gmail for automated emails
+  - Email notifications on student/volunteer registration
+  - Email notifications on payment/donation submission
+  - Email notifications on admin approval (to both admin and user)
+  - Email notifications for results, admit cards, roll number assignments
+  - Fixed AdminVolunteers page to show both volunteer accounts and applications with tabs
+  - Fixed volunteer login response handling
+  - Fixed AdminLayout key prop for menu items
 - **December 29, 2024**: Enhanced volunteer and payment management system
   - Added volunteer_accounts table with login/password support and approval workflow
   - Added payment_transactions table to track all donations, fees, and memberships with admin approval

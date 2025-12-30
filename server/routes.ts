@@ -2,6 +2,16 @@ import type { Express } from "express";
 import bcrypt from "bcryptjs";
 import { storage } from "./storage";
 import { authMiddleware, adminOnly, generateToken, AuthRequest } from "./middleware/auth";
+import { 
+  sendStudentRegistrationEmail, 
+  sendVolunteerRegistrationEmail, 
+  sendPaymentConfirmationEmail,
+  sendApprovalEmail,
+  sendAdminNotificationEmail,
+  sendResultNotificationEmail,
+  sendAdmitCardNotificationEmail,
+  sendRollNumberNotificationEmail
+} from "./email";
 
 export async function registerRoutes(app: Express): Promise<void> {
   
@@ -115,6 +125,28 @@ export async function registerRoutes(app: Express): Promise<void> {
       });
       
       const token = generateToken({ id: student.id.toString(), email: student.email, role: "student", name: student.fullName });
+      
+      // Send email notifications
+      sendStudentRegistrationEmail({
+        email: student.email,
+        fullName: student.fullName,
+        registrationNumber,
+        fatherName: fatherName || "",
+        phone: student.phone || "",
+      }).catch(err => console.error("Student registration email error:", err));
+      
+      sendAdminNotificationEmail({
+        type: "Student Registration",
+        name: student.fullName,
+        email: student.email,
+        details: {
+          "Registration Number": registrationNumber,
+          "Class": studentClass || "N/A",
+          "Fee Level": feeLevel || "village",
+          "Amount": `Rs. ${feeAmount}`,
+        },
+      }).catch(err => console.error("Admin notification email error:", err));
+      
       res.status(201).json({ token, user: { id: student.id, email: student.email, role: "student", name: student.fullName }, registrationNumber });
     } catch (error) {
       console.error("Registration error:", error);
@@ -260,6 +292,23 @@ export async function registerRoutes(app: Express): Promise<void> {
   app.post("/api/results", authMiddleware, adminOnly, async (req: AuthRequest, res) => {
     try {
       const result = await storage.createResult(req.body);
+      
+      // Send email notification to student
+      if (req.body.studentId) {
+        const student = await storage.getStudentById(req.body.studentId);
+        if (student?.email) {
+          sendResultNotificationEmail({
+            email: student.email,
+            studentName: student.fullName,
+            examName: req.body.examName || "Exam",
+            totalMarks: req.body.totalMarks || 0,
+            marksObtained: req.body.marksObtained || 0,
+            grade: req.body.grade,
+            rank: req.body.rank,
+          }).catch(err => console.error("Result notification email error:", err));
+        }
+      }
+      
       res.status(201).json(result);
     } catch (error) {
       res.status(500).json({ error: "Failed to create result" });
@@ -304,6 +353,20 @@ export async function registerRoutes(app: Express): Promise<void> {
   app.post("/api/admit-cards", authMiddleware, adminOnly, async (req: AuthRequest, res) => {
     try {
       const admitCard = await storage.createAdmitCard(req.body);
+      
+      // Send email notification to student
+      if (req.body.studentId) {
+        const student = await storage.getStudentById(req.body.studentId);
+        if (student?.email) {
+          sendAdmitCardNotificationEmail({
+            email: student.email,
+            studentName: student.fullName,
+            examName: req.body.examName || "Examination",
+            rollNumber: student.rollNumber || undefined,
+          }).catch(err => console.error("Admit card notification email error:", err));
+        }
+      }
+      
       res.status(201).json(admitCard);
     } catch (error) {
       res.status(500).json({ error: "Failed to create admit card" });
@@ -874,9 +937,29 @@ export async function registerRoutes(app: Express): Promise<void> {
       });
       
       const token = generateToken({ id: volunteer.id.toString(), email: volunteer.email, role: "volunteer", name: volunteer.fullName });
+      
+      // Send email notifications
+      sendVolunteerRegistrationEmail({
+        email: volunteer.email,
+        fullName: volunteer.fullName,
+        phone: volunteer.phone || "",
+      }).catch(err => console.error("Volunteer registration email error:", err));
+      
+      sendAdminNotificationEmail({
+        type: "Volunteer Registration",
+        name: volunteer.fullName,
+        email: volunteer.email,
+        details: {
+          "Phone": volunteer.phone || "N/A",
+          "City": city || "N/A",
+          "Occupation": occupation || "N/A",
+          "Skills": skills || "N/A",
+        },
+      }).catch(err => console.error("Admin notification email error:", err));
+      
       res.status(201).json({ 
         success: true, 
-        message: "Registration successful! Your account is pending admin approval.",
+        message: "Registration successful! Your account is pending admin approval. / पंजीकरण सफल! आपका खाता व्यवस्थापक की मंजूरी की प्रतीक्षा में है।",
         token,
         user: { id: volunteer.id, email: volunteer.email, role: "volunteer", name: volunteer.fullName, isApproved: volunteer.isApproved }
       });
@@ -937,6 +1020,20 @@ export async function registerRoutes(app: Express): Promise<void> {
       }
       const account = await storage.updateVolunteerAccount(parseInt(req.params.id), updates);
       if (!account) return res.status(404).json({ error: "Volunteer account not found" });
+      
+      // Send approval email if volunteer is approved
+      if (req.body.isApproved === true && account.email) {
+        sendApprovalEmail({
+          email: account.email,
+          name: account.fullName,
+          type: "volunteer",
+          details: {
+            "Email / ईमेल": account.email,
+            "Phone / फोन": account.phone || "N/A",
+          },
+        }).catch(err => console.error("Volunteer approval email error:", err));
+      }
+      
       const { password, ...accountData } = account;
       res.json(accountData);
     } catch (error) {
@@ -971,9 +1068,34 @@ export async function registerRoutes(app: Express): Promise<void> {
         photoUrl,
       });
       
+      // Send email notifications
+      if (email) {
+        sendPaymentConfirmationEmail({
+          email,
+          name: name || "User",
+          amount: amount || 0,
+          transactionId: transactionId || "",
+          type: type || "payment",
+          purpose,
+        }).catch(err => console.error("Payment confirmation email error:", err));
+      }
+      
+      sendAdminNotificationEmail({
+        type: `Payment (${type || "Unknown"})`,
+        name: name || "Unknown",
+        email: email || "N/A",
+        details: {
+          "Type": type || "N/A",
+          "Amount": `Rs. ${amount || 0}`,
+          "UTR/Transaction ID": transactionId || "N/A",
+          "Payment Method": paymentMethod || "N/A",
+          "Purpose": purpose || "N/A",
+        },
+      }).catch(err => console.error("Admin payment notification error:", err));
+      
       res.status(201).json({ 
         success: true, 
-        message: "Payment submitted successfully! Please wait for admin approval.",
+        message: "Payment submitted successfully! Please wait for admin approval. / भुगतान सफलतापूर्वक जमा हुआ! कृपया व्यवस्थापक की मंजूरी की प्रतीक्षा करें।",
         transaction: { id: transaction.id, status: transaction.status }
       });
     } catch (error) {
@@ -1009,6 +1131,21 @@ export async function registerRoutes(app: Express): Promise<void> {
       }
       const transaction = await storage.updatePaymentTransaction(parseInt(req.params.id), updates);
       if (!transaction) return res.status(404).json({ error: "Transaction not found" });
+      
+      // Send approval email if status changed to approved
+      if (req.body.status === "approved" && transaction.email) {
+        sendApprovalEmail({
+          email: transaction.email,
+          name: transaction.name || "User",
+          type: "payment",
+          details: {
+            "Type / प्रकार": transaction.type || "Payment",
+            "Amount / राशि": `Rs. ${transaction.amount || 0}`,
+            "Transaction ID": transaction.transactionId || "N/A",
+          },
+        }).catch(err => console.error("Payment approval email error:", err));
+      }
+      
       res.json(transaction);
     } catch (error) {
       res.status(500).json({ error: "Failed to update transaction" });

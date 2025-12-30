@@ -155,7 +155,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       const isActive = location.pathname === item.path;
       return (
         <Link
-          key={item._id}
+          key={item.id || item.path}
           to={item.path}
           onClick={() => setSidebarOpen(false)}
           className={cn(
