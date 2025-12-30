@@ -32,6 +32,7 @@ import AdminFees from "./pages/admin/AdminFees";
 import AdminMemberships from "./pages/admin/AdminMemberships";
 import AdminSettings from "./pages/admin/AdminSettings";
 import AdminVolunteers from "./pages/admin/AdminVolunteers";
+import AdminGallery from "./pages/admin/AdminGallery";
 import AdminContent from "./pages/admin/AdminContent";
 import AdminPages from "./pages/admin/AdminPages";
 import AdminPayments from "./pages/admin/AdminPayments";
@@ -77,6 +78,7 @@ const App = () => (
             <Route path="/admin/fees" element={<AdminFees />} />
             <Route path="/admin/memberships" element={<AdminMemberships />} />
             <Route path="/admin/volunteers" element={<AdminVolunteers />} />
+            <Route path="/admin/gallery" element={<AdminGallery />} />
             <Route path="/admin/content" element={<AdminContent />} />
             <Route path="/admin/pages" element={<AdminPages />} />
             <Route path="/admin/payments" element={<AdminPayments />} />
