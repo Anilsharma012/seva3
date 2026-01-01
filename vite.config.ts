@@ -4,12 +4,26 @@ import path from "path";
 
 export default defineConfig(({ mode }) => ({
   root: path.resolve(__dirname, "client"),
+
   server: {
     host: "0.0.0.0",
-    port: 5000,
+    port: 5173,
+    strictPort: true,
     allowedHosts: true,
+
+    // ✅ Frontend (5173) se /api requests backend (5000) par bhej do
+    proxy: {
+      "/api": {
+        target: "http://localhost:5000",
+        changeOrigin: true,
+        secure: false,
+        ws: true,
+      },
+    },
   },
+
   plugins: [react()],
+
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "client/src"),
@@ -17,6 +31,7 @@ export default defineConfig(({ mode }) => ({
       "@assets": path.resolve(__dirname, "client/src/assets"),
     },
   },
+
   build: {
     outDir: path.resolve(__dirname, "dist/public"),
     emptyOutDir: true,

@@ -1,97 +1,108 @@
-import type { Express } from "express";
-import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
+import type { Express, Request } from "express";
+import express from "express";
+import fs from "fs";
+import path from "path";
+import crypto from "crypto";
+import { pipeline } from "stream/promises";
+
+import { authMiddleware, adminOnly, type AuthRequest } from "../../middleware/auth";
 
 /**
- * Register object storage routes for file uploads.
+ * Local upload implementation (NO S3 / NO Replit object storage)
  *
- * This provides example routes for the presigned URL upload flow:
- * 1. POST /api/uploads/request-url - Get a presigned URL for uploading
- * 2. The client then uploads directly to the presigned URL
+ * Flow:
+ * 1) POST /api/uploads/request-url  -> returns { uploadURL, fileURL }
+ * 2) PUT  uploadURL                -> saves file to /uploads
+ * 3) Use fileURL in DB (img src)
  *
- * IMPORTANT: These are example routes. Customize based on your use case:
- * - Add authentication middleware for protected uploads
- * - Add file metadata storage (save to database after upload)
- * - Add ACL policies for access control
+ * Nginx should serve:
+ *   location ^~ /uploads/ { alias /www/wwwroot/<site>/uploads/; }
  */
-export function registerObjectStorageRoutes(app: Express): void {
-  const objectStorageService = new ObjectStorageService();
-
-  /**
-   * Request a presigned URL for file upload.
-   *
-   * Request body (JSON):
-   * {
-   *   "name": "filename.jpg",
-   *   "size": 12345,
-   *   "contentType": "image/jpeg"
-   * }
-   *
-   * Response:
-   * {
-   *   "uploadURL": "https://storage.googleapis.com/...",
-   *   "objectPath": "/objects/uploads/uuid"
-   * }
-   *
-   * IMPORTANT: The client should NOT send the file to this endpoint.
-   * Send JSON metadata only, then upload the file directly to uploadURL.
-   */
-  app.post("/api/uploads/request-url", async (req, res) => {
-    try {
-      const { name, size, contentType } = req.body;
-
-      if (!name) {
-        return res.status(400).json({
-          error: "Missing required field: name",
-        });
-      }
-
-      const uploadURL = await objectStorageService.getObjectEntityUploadURL();
-
-      // Extract object path from the presigned URL for later reference
-      const objectPath = objectStorageService.normalizeObjectEntityPath(uploadURL);
-      
-      // Generate a presigned GET URL for reading the file after upload
-      // Extract bucket and object name from the normalized path
-      const parts = objectPath.slice(1).split("/");
-      const entityId = parts.slice(1).join("/");
-      let entityDir = objectStorageService.getPrivateObjectDir();
-      if (!entityDir.endsWith("/")) {
-        entityDir = `${entityDir}/`;
-      }
-      const fullPath = `${entityDir}${entityId}`;
-
-      res.json({
-        uploadURL,
-        objectPath,
-        // Echo back the metadata for client convenience
-        metadata: { name, size, contentType },
-      });
-    } catch (error) {
-      console.error("Error generating upload URL:", error);
-      res.status(500).json({ error: "Failed to generate upload URL" });
-    }
-  });
-
-  /**
-   * Serve uploaded objects.
-   *
-   * This serves files from object storage. For public files, no auth needed.
-   * For protected files, add authentication middleware and ACL checks.
-   */
-  app.use("/objects", async (req, res) => {
-    try {
-      // Build the full path from the request (req.path already includes /uploads/uuid etc)
-      const objectPath = `/objects${req.path}`;
-      console.log("Serving object:", objectPath);
-      const objectFile = await objectStorageService.getObjectEntityFile(objectPath);
-      await objectStorageService.downloadObject(objectFile, res);
-    } catch (error) {
-      console.error("Error serving object:", error);
-      if (error instanceof ObjectNotFoundError) {
-        return res.status(404).json({ error: "Object not found" });
-      }
-      return res.status(500).json({ error: "Failed to serve object" });
-    }
-  });
+function getBaseUrl(req: Request) {
+  const proto = (req.headers["x-forwarded-proto"] as string) || req.protocol || "https";
+  const host =
+    (req.headers["x-forwarded-host"] as string) ||
+    (req.headers["host"] as string) ||
+    "localhost";
+  return `${proto}://${host}`;
 }
 
+function getUploadDir() {
+  // project root uploads folder
+  return process.env.UPLOAD_DIR || path.resolve(process.cwd(), "uploads");
+}
+
+function safeExtFromName(name: string) {
+  const ext = path.extname(name || "").slice(0, 10).toLowerCase(); // ".jpg"
+  // allow common image types only (aap chaho to extend kar dena)
+  const allowed = new Set([".jpg", ".jpeg", ".png", ".webp", ".gif", ".svg"]);
+  return allowed.has(ext) ? ext : "";
+}
+
+export function registerObjectStorageRoutes(app: Express) {
+  const uploadDir = getUploadDir();
+  if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
+
+  // Serve uploads also from node (optional). Nginx alias recommended.
+  app.use("/uploads", express.static(uploadDir, { maxAge: "7d" }));
+  // Backward compatibility: if any old URL uses /objects, serve same folder
+  app.use("/objects", express.static(uploadDir, { maxAge: "7d" }));
+
+  // Request upload URL (admin only)
+  app.post(
+    "/api/uploads/request-url",
+    authMiddleware,
+    adminOnly,
+    async (req: AuthRequest, res) => {
+      try {
+        const { name, contentType } = req.body ?? {};
+        if (!name || typeof name !== "string") {
+          return res.status(400).json({ error: "Missing file name" });
+        }
+
+        // Generate safe unique file name
+        const ext = safeExtFromName(name);
+        const key = `${Date.now()}-${crypto.randomUUID()}${ext}`;
+
+        const base = getBaseUrl(req);
+        const uploadURL = `${base}/api/uploads/put/${encodeURIComponent(key)}`;
+        const fileURL = `${base}/uploads/${encodeURIComponent(key)}`;
+
+        return res.json({ uploadURL, fileURL, contentType });
+      } catch (err) {
+        console.error("Error generating upload URL:", err);
+        return res.status(500).json({ error: "Failed to generate upload URL" });
+      }
+    },
+  );
+
+  // Upload endpoint (PUT raw file) (admin only)
+  app.put(
+    "/api/uploads/put/:fileName",
+    authMiddleware,
+    adminOnly,
+    async (req: AuthRequest, res) => {
+      try {
+        const fileName = path.basename(decodeURIComponent(req.params.fileName || ""));
+        if (!fileName) return res.status(400).json({ error: "Invalid fileName" });
+
+        const destPath = path.join(uploadDir, fileName);
+
+        // Stream request body directly to disk
+        await pipeline(req, fs.createWriteStream(destPath));
+
+        // Send an ETag header (helps Uppy AwsS3 plugin not complain)
+        res.setHeader("ETag", `"${fileName}"`);
+        res.setHeader("Access-Control-Expose-Headers", "ETag");
+
+        const base = getBaseUrl(req);
+        const fileURL = `${base}/uploads/${encodeURIComponent(fileName)}`;
+
+        return res.status(200).json({ ok: true, fileURL });
+      } catch (err) {
+        console.error("Upload PUT failed:", err);
+        return res.status(500).json({ error: "Upload failed" });
+      }
+    },
+  );
+}

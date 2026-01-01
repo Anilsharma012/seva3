@@ -1,15 +1,29 @@
 import express, { type Express } from "express";
 import fs from "fs";
 import path from "path";
-import { fileURLToPath } from "url";
-import { createServer as createViteServer, type ViteDevServer } from "vite";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+// Project root ko CWD se find karo (upar tak walk karke vite.config.* dhundega)
+function findProjectRoot(startDir: string) {
+  let dir = startDir;
 
-const rootPath = path.resolve(__dirname, "..");
-const clientPath = path.resolve(__dirname, "..", "client");
-const distPath = path.resolve(__dirname, "..", "dist", "public");
+  for (let i = 0; i < 8; i++) {
+    const hasViteConfig =
+      fs.existsSync(path.join(dir, "vite.config.ts")) ||
+      fs.existsSync(path.join(dir, "vite.config.js")) ||
+      fs.existsSync(path.join(dir, "vite.config.mjs"));
+
+    if (hasViteConfig) return dir;
+
+    const parent = path.dirname(dir);
+    if (parent === dir) break;
+    dir = parent;
+  }
+
+  return startDir;
+}
+
+const rootPath = findProjectRoot(process.cwd());
+const distPath = path.resolve(rootPath, "dist", "public");
 
 export function log(message: string, source = "express") {
   const formattedTime = new Date().toLocaleTimeString("en-US", {
@@ -23,7 +37,10 @@ export function log(message: string, source = "express") {
 }
 
 export async function setupVite(app: Express) {
-  const vite = await createViteServer({
+  // ✅ Vite ko runtime pe sirf dev me load karo (prod logs me CJS warning bhi nahi aayegi)
+  const { createServer } = await import("vite");
+
+  const vite = await createServer({
     configFile: path.resolve(rootPath, "vite.config.ts"),
     server: { middlewareMode: true },
     appType: "spa",
@@ -40,7 +57,13 @@ export function serveStatic(app: Express) {
   }
 
   app.use(express.static(distPath, { maxAge: "1d" }));
-  app.use("*", (_req, res) => {
-    res.sendFile(path.resolve(distPath, "index.html"));
+
+  // ✅ Express 5 me "*" invalid hai, isliye no-path middleware use karo
+  app.use((req, res) => {
+    // /api ka unknown route ho to index.html mat do, 404 do
+    if (req.path.startsWith("/api")) {
+      return res.status(404).json({ message: "Not Found" });
+    }
+    return res.sendFile(path.resolve(distPath, "index.html"));
   });
 }
