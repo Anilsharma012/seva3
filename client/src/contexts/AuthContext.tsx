@@ -125,17 +125,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const signup = async (data: StudentRegistrationData): Promise<{ success: boolean; error?: string; registrationNumber?: string }> => {
+  const signup = async (data: StudentRegistrationData | MemberRegistrationData): Promise<{ success: boolean; error?: string; registrationNumber?: string }> => {
     setIsLoading(true);
     try {
-      const res = await fetch("/api/auth/student/register", {
+      const isMember = 'city' in data && !('class' in data);
+      const endpoint = isMember ? "/api/auth/member/register" : "/api/auth/student/register";
+
+      const res = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
       });
 
       const result = await res.json();
-      
+
       if (!res.ok) {
         setIsLoading(false);
         return { success: false, error: result.error || "Registration failed" };
