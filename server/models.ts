@@ -282,6 +282,30 @@ export interface IGalleryImage extends Document {
   updatedAt: Date;
 }
 
+export interface IPasswordResetToken extends Document {
+  userId: mongoose.Types.ObjectId;
+  userType: 'student' | 'member';
+  token: string;
+  email: string;
+  expiresAt: Date;
+  used: boolean;
+  createdAt: Date;
+}
+
+export interface IMember extends Document {
+  email: string;
+  password: string;
+  fullName: string;
+  phone: string;
+  address?: string;
+  city?: string;
+  membershipType: string;
+  membershipNumber?: string;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 const AdminSchema = new Schema<IAdmin>({
   email: { type: String, required: true, unique: true },
   password: { type: String, required: true },
