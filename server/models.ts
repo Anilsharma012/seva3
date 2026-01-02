@@ -588,6 +588,30 @@ const GalleryImageSchema = new Schema<IGalleryImage>({
   updatedAt: { type: Date, default: Date.now }
 });
 
+const PasswordResetTokenSchema = new Schema<IPasswordResetToken>({
+  userId: { type: Schema.Types.ObjectId, required: true },
+  userType: { type: String, enum: ['student', 'member'], required: true },
+  token: { type: String, required: true, unique: true },
+  email: { type: String, required: true },
+  expiresAt: { type: Date, required: true },
+  used: { type: Boolean, default: false },
+  createdAt: { type: Date, default: Date.now }
+});
+
+const MemberSchema = new Schema<IMember>({
+  email: { type: String, required: true, unique: true },
+  password: { type: String, required: true },
+  fullName: { type: String, required: true },
+  phone: { type: String, required: true },
+  address: String,
+  city: String,
+  membershipType: { type: String, default: 'regular' },
+  membershipNumber: { type: String, unique: true, sparse: true },
+  isActive: { type: Boolean, default: true },
+  createdAt: { type: Date, default: Date.now },
+  updatedAt: { type: Date, default: Date.now }
+});
+
 export const Admin = mongoose.model<IAdmin>('Admin', AdminSchema);
 export const Student = mongoose.model<IStudent>('Student', StudentSchema);
 export const Result = mongoose.model<IResult>('Result', ResultSchema);
