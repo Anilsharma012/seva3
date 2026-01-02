@@ -1311,4 +1311,281 @@ export async function registerRoutes(app: Express): Promise<void> {
       res.status(500).json({ error: "Failed to delete gallery image" });
     }
   });
+
+  // ============ PASSWORD RESET ROUTES ============
+  app.post("/api/auth/student/forgot-password", async (req, res) => {
+    try {
+      const { email } = req.body;
+      const student = await storage.getStudentByEmail(email);
+
+      if (!student) {
+        // Don't reveal if email exists or not for security
+        return res.json({ success: true, message: "If this email exists, you will receive a password reset link." });
+      }
+
+      // Generate reset token
+      const resetToken = require('crypto').randomBytes(32).toString('hex');
+      const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+
+      // Save reset token to database
+      const { PasswordResetToken } = require('./models');
+      await PasswordResetToken.create({
+        userId: student.id,
+        userType: 'student',
+        token: resetToken,
+        email: email,
+        expiresAt: expiresAt,
+        used: false
+      });
+
+      const resetLink = `${process.env.PUBLIC_BASE_URL}/student/reset-password?token=${resetToken}`;
+
+      // Send email
+      const { sendPasswordResetEmail } = require('./email');
+      await sendPasswordResetEmail({
+        email: student.email,
+        name: student.fullName,
+        resetLink: resetLink,
+        type: 'student'
+      });
+
+      res.json({ success: true, message: "Password reset link sent to your email." });
+    } catch (error) {
+      console.error("Forgot password error:", error);
+      res.status(500).json({ error: "Failed to process password reset request" });
+    }
+  });
+
+  app.post("/api/auth/student/reset-password", async (req, res) => {
+    try {
+      const { token, newPassword } = req.body;
+
+      if (!token || !newPassword) {
+        return res.status(400).json({ error: "Token and new password are required" });
+      }
+
+      const { PasswordResetToken } = require('./models');
+      const resetTokenDoc = await PasswordResetToken.findOne({ token, used: false });
+
+      if (!resetTokenDoc) {
+        return res.status(400).json({ error: "Invalid or expired reset token" });
+      }
+
+      if (new Date() > resetTokenDoc.expiresAt) {
+        return res.status(400).json({ error: "Password reset token has expired" });
+      }
+
+      // Get student and update password
+      const student = await storage.getStudentById(resetTokenDoc.userId.toString());
+      if (!student) {
+        return res.status(400).json({ error: "Student not found" });
+      }
+
+      const hashedPassword = await bcrypt.hash(newPassword, 10);
+      await storage.updateStudent(student.id.toString(), { password: hashedPassword });
+
+      // Mark token as used
+      await PasswordResetToken.findByIdAndUpdate(resetTokenDoc._id, { used: true });
+
+      res.json({ success: true, message: "Password reset successfully" });
+    } catch (error) {
+      console.error("Reset password error:", error);
+      res.status(500).json({ error: "Failed to reset password" });
+    }
+  });
+
+  // ============ MEMBER ROUTES ============
+  app.post("/api/auth/member/register", async (req, res) => {
+    try {
+      const { email, password, fullName, phone, city } = req.body;
+      const { Member } = require('./models');
+
+      const existing = await Member.findOne({ email });
+      if (existing) {
+        return res.status(400).json({ error: "Email already registered" });
+      }
+
+      const hashedPassword = await bcrypt.hash(password, 10);
+      const count = await Member.countDocuments();
+      const membershipNumber = `MWSS-MB${String(count + 1).padStart(5, "0")}`;
+
+      const member = await Member.create({
+        email,
+        password: hashedPassword,
+        fullName,
+        phone,
+        city: city || 'Haryana',
+        membershipNumber,
+        isActive: true
+      });
+
+      const token = generateToken({ id: member._id.toString(), email: member.email, role: "member", name: member.fullName });
+
+      const { sendApprovalEmail } = require('./email');
+      await sendApprovalEmail({
+        email: member.email,
+        name: member.fullName,
+        type: 'membership',
+        details: {
+          'Email / ईमेल': member.email,
+          'Membership Number': membershipNumber,
+          'Phone / फोन': phone || 'N/A'
+        }
+      }).catch((err: any) => console.error("Member registration email error:", err));
+
+      const { password: _, ...memberData } = member.toObject();
+      res.status(201).json({
+        success: true,
+        token,
+        user: {
+          id: member._id,
+          email: member.email,
+          role: "member",
+          name: member.fullName,
+          membershipNumber
+        },
+        registrationNumber: membershipNumber
+      });
+    } catch (error) {
+      console.error("Member registration error:", error);
+      res.status(500).json({ error: "Registration failed" });
+    }
+  });
+
+  app.post("/api/auth/member/login", async (req, res) => {
+    try {
+      const { email, password } = req.body;
+      const { Member } = require('./models');
+
+      const member = await Member.findOne({ email });
+
+      if (!member) {
+        return res.status(401).json({ error: "Invalid credentials" });
+      }
+
+      if (!member.isActive) {
+        return res.status(403).json({ error: "Account is deactivated" });
+      }
+
+      const isValid = await bcrypt.compare(password, member.password);
+      if (!isValid) {
+        return res.status(401).json({ error: "Invalid credentials" });
+      }
+
+      const token = generateToken({ id: member._id.toString(), email: member.email, role: "member", name: member.fullName });
+      const { password: _, ...memberData } = member.toObject();
+
+      res.json({
+        token,
+        user: {
+          id: member._id,
+          email: member.email,
+          role: "member",
+          name: member.fullName,
+          membershipNumber: member.membershipNumber
+        }
+      });
+    } catch (error) {
+      res.status(500).json({ error: "Login failed" });
+    }
+  });
+
+  app.post("/api/auth/member/forgot-password", async (req, res) => {
+    try {
+      const { email } = req.body;
+      const { Member } = require('./models');
+
+      const member = await Member.findOne({ email });
+
+      if (!member) {
+        return res.json({ success: true, message: "If this email exists, you will receive a password reset link." });
+      }
+
+      // Generate reset token
+      const resetToken = require('crypto').randomBytes(32).toString('hex');
+      const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+      const { PasswordResetToken } = require('./models');
+      await PasswordResetToken.create({
+        userId: member._id,
+        userType: 'member',
+        token: resetToken,
+        email: email,
+        expiresAt: expiresAt,
+        used: false
+      });
+
+      const resetLink = `${process.env.PUBLIC_BASE_URL}/member/reset-password?token=${resetToken}`;
+
+      const { sendPasswordResetEmail } = require('./email');
+      await sendPasswordResetEmail({
+        email: member.email,
+        name: member.fullName,
+        resetLink: resetLink,
+        type: 'member'
+      });
+
+      res.json({ success: true, message: "Password reset link sent to your email." });
+    } catch (error) {
+      console.error("Forgot password error:", error);
+      res.status(500).json({ error: "Failed to process password reset request" });
+    }
+  });
+
+  app.post("/api/auth/member/reset-password", async (req, res) => {
+    try {
+      const { token, newPassword } = req.body;
+      const { PasswordResetToken } = require('./models');
+      const { Member } = require('./models');
+
+      if (!token || !newPassword) {
+        return res.status(400).json({ error: "Token and new password are required" });
+      }
+
+      const resetTokenDoc = await PasswordResetToken.findOne({ token, used: false });
+
+      if (!resetTokenDoc) {
+        return res.status(400).json({ error: "Invalid or expired reset token" });
+      }
+
+      if (new Date() > resetTokenDoc.expiresAt) {
+        return res.status(400).json({ error: "Password reset token has expired" });
+      }
+
+      const member = await Member.findById(resetTokenDoc.userId);
+      if (!member) {
+        return res.status(400).json({ error: "Member not found" });
+      }
+
+      const hashedPassword = await bcrypt.hash(newPassword, 10);
+      await Member.findByIdAndUpdate(member._id, { password: hashedPassword });
+
+      await PasswordResetToken.findByIdAndUpdate(resetTokenDoc._id, { used: true });
+
+      res.json({ success: true, message: "Password reset successfully" });
+    } catch (error) {
+      console.error("Reset password error:", error);
+      res.status(500).json({ error: "Failed to reset password" });
+    }
+  });
+
+  app.get("/api/auth/member/me", authMiddleware, async (req: AuthRequest, res) => {
+    try {
+      if (req.user?.role !== "member") {
+        return res.status(403).json({ error: "Only members can access this endpoint" });
+      }
+
+      const { Member } = require('./models');
+      const member = await Member.findById(req.user.id);
+
+      if (!member) {
+        return res.status(404).json({ error: "Member not found" });
+      }
+
+      const { password, ...memberData } = member.toObject();
+      res.json({ ...memberData, role: "member" });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch member data" });
+    }
+  });
 }
