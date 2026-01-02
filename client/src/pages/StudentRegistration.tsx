@@ -24,6 +24,7 @@ interface PaymentConfig {
   ifscCode?: string;
   accountHolderName?: string;
   isActive: boolean;
+  level?: string;
 }
 
 const feeLevels = [
@@ -60,7 +61,28 @@ export default function StudentRegistration() {
     fetchPaymentConfigs();
   }, []);
 
-  const feeConfig = paymentConfigs[0];
+  const [formData, setFormData] = useState({
+    studentName: "",
+    fatherName: "",
+    motherName: "",
+    email: "",
+    password: "",
+    class: "",
+    phone: "",
+    address: "",
+    village: "",
+    city: "",
+    dateOfBirth: "",
+    gender: "",
+    feeLevel: "village",
+    transactionId: "",
+  });
+
+  // Get payment config for selected fee level
+  const feeConfig = paymentConfigs.find(config =>
+    config.name?.toLowerCase().includes(formData.feeLevel.toLowerCase())
+  ) || paymentConfigs[0];
+
   const hasQR = feeConfig?.qrCodeUrl;
   const hasUPI = feeConfig?.upiId;
   const hasBank = feeConfig?.bankName;
