@@ -472,17 +472,29 @@ export default function StudentRegistration() {
                   </p>
                 </div>
 
+                <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 p-4 rounded-lg">
+                  <h4 className="font-semibold text-orange-900 dark:text-orange-200 mb-2">
+                    ⏳ Admin Approval Pending / व्यवस्थापक की मंजूरी की प्रतीक्षा है
+                  </h4>
+                  <p className="text-orange-800 dark:text-orange-300 text-sm mb-2">
+                    आपका भुगतान अभी सत्यापन के तहत है। कृपया अगले 24-48 घंटों में admin की मंजूरी के लिए प्रतीक्षा करें।
+                  </p>
+                  <p className="text-orange-800 dark:text-orange-300 text-sm">
+                    Approval के बाद आप अपने Registration Number और Password से login कर सकेंगे।
+                  </p>
+                </div>
+
                 <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 p-4 rounded-lg">
                   <p className="text-yellow-800 dark:text-yellow-200 text-sm">
-                    <strong>Important / महत्वपूर्ण:</strong> कृपया अपना Email और Password सुरक्षित रखें। 
-                    आप इनका उपयोग Student Portal में Login करने के लिए करेंगे।
+                    <strong>Important / महत्वपूर्ण:</strong> कृपया अपना Email और Password सुरक्षित रखें।
+                    Approval के बाद आप Student Portal में login कर सकेंगे।
                   </p>
                 </div>
 
                 <div className="flex gap-4">
                   <Button variant="outline" onClick={() => navigate("/")} className="flex-1" data-testid="button-home">Home / होम</Button>
-                  <Button onClick={() => navigate("/student/dashboard")} className="flex-1 bg-secondary" data-testid="button-go-dashboard">
-                    Go to Dashboard / डैशबोर्ड पर जाएं
+                  <Button onClick={() => navigate("/student/login")} className="flex-1 bg-secondary" data-testid="button-go-dashboard">
+                    Check Login Status / लॉगिन स्थिति जांचें
                   </Button>
                 </div>
               </CardContent>
