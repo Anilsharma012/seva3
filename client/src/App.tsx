@@ -74,8 +74,17 @@ const App = () => (
             <Route path="/admin/login" element={<AdminLogin />} />
             <Route path="/student/login" element={<StudentLogin />} />
             <Route path="/student/register" element={<StudentRegistration />} />
+            <Route path="/student/forgot-password" element={<StudentForgotPassword />} />
+            <Route path="/student/reset-password" element={<StudentResetPassword />} />
             {/* Student Dashboard */}
             <Route path="/student/dashboard" element={<StudentDashboard />} />
+            {/* Member Routes */}
+            <Route path="/member/login" element={<MemberLogin />} />
+            <Route path="/member/register" element={<MemberRegistration />} />
+            <Route path="/member/forgot-password" element={<MemberForgotPassword />} />
+            <Route path="/member/reset-password" element={<MemberResetPassword />} />
+            {/* Member Dashboard */}
+            <Route path="/member/dashboard" element={<MemberDashboard />} />
             {/* Admin Dashboard */}
             <Route path="/admin/dashboard" element={<AdminDashboard />} />
             <Route path="/admin/students" element={<AdminStudents />} />
