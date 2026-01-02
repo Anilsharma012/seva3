@@ -3,7 +3,7 @@ import { createContext, useContext, useState, useEffect, ReactNode } from "react
 interface AuthUser {
   id: string;
   email: string;
-  role: "admin" | "student" | null;
+  role: "admin" | "student" | "member" | null;
   name?: string;
 }
 
@@ -11,11 +11,22 @@ interface AuthContextType {
   user: AuthUser | null;
   token: string | null;
   isLoading: boolean;
-  login: (email: string, password: string, type?: "admin" | "student") => Promise<{ success: boolean; error?: string }>;
-  signup: (data: StudentRegistrationData) => Promise<{ success: boolean; error?: string; registrationNumber?: string }>;
+  login: (email: string, password: string, type?: "admin" | "student" | "member") => Promise<{ success: boolean; error?: string }>;
+  signup: (data: StudentRegistrationData | MemberRegistrationData) => Promise<{ success: boolean; error?: string; registrationNumber?: string }>;
   logout: () => void;
   isAdmin: boolean;
   isStudent: boolean;
+  isMember: boolean;
+  forgotPassword: (email: string, type: "student" | "member") => Promise<{ success: boolean; error?: string }>;
+  resetPassword: (token: string, newPassword: string, type: "student" | "member") => Promise<{ success: boolean; error?: string }>;
+}
+
+interface MemberRegistrationData {
+  email: string;
+  password: string;
+  fullName: string;
+  phone: string;
+  city?: string;
 }
 
 interface StudentRegistrationData {
