@@ -279,3 +279,30 @@ export async function sendRollNumberNotificationEmail(data: {
   `;
   return sendEmail({ to: data.email, subject: `Roll Number Assigned: ${data.rollNumber} - Manav Welfare Seva Society / रोल नंबर आवंटित`, html });
 }
+
+export async function sendPasswordResetEmail(data: {
+  email: string;
+  name: string;
+  resetLink: string;
+  type: "student" | "member";
+}) {
+  const typeLabel = data.type === "student" ? "Student" : "Member";
+  const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+      <h2 style="color: #2563eb;">Manav Welfare Seva Society</h2>
+      <h3>Password Reset Request / पासवर्ड रीसेट अनुरोध</h3>
+      <p>Dear <strong>${data.name}</strong>,</p>
+      <p>We received a request to reset your password for your ${typeLabel} account. If you did not make this request, you can ignore this email.</p>
+      <p>हमने आपके ${typeLabel} खाते के लिए पासवर्ड रीसेट करने के लिए एक अनुरोध प्राप्त किया। यदि आपने यह अनुरोध नहीं किया, तो आप इस ईमेल को अनदेखा कर सकते हैं।</p>
+      <p style="margin: 30px 0;">
+        <a href="${data.resetLink}" style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">Reset Password / पासवर्ड रीसेट करें</a>
+      </p>
+      <p style="color: #666; font-size: 12px;">Or copy and paste this link in your browser:</p>
+      <p style="color: #666; font-size: 12px; word-break: break-all;">${data.resetLink}</p>
+      <p style="color: #dc2626; margin-top: 20px;"><strong>Note:</strong> This link will expire in 24 hours. / यह लिंक 24 घंटे में समाप्त हो जाएगा।</p>
+      <hr style="margin: 20px 0;">
+      <p style="color: #666; font-size: 12px;">Manav Welfare Seva Society, Haryana, India</p>
+    </div>
+  `;
+  return sendEmail({ to: data.email, subject: `Password Reset Request - Manav Welfare Seva Society / पासवर्ड रीसेट अनुरोध`, html });
+}
