@@ -354,10 +354,13 @@ export default function StudentRegistration() {
                           <QrCode className="h-5 w-5 text-primary" />
                           <span className="font-medium">Scan QR Code / QR स्कैन करें</span>
                         </div>
+                        <p className="text-sm text-muted-foreground mb-4 font-medium">
+                          Amount: Rs.{selectedFeeLevel?.amount} के लिए QR Code
+                        </p>
                         <div className="bg-white p-4 rounded-lg inline-block shadow-md">
-                          <img 
-                            src={feeConfig.qrCodeUrl} 
-                            alt="Payment QR Code" 
+                          <img
+                            src={feeConfig.qrCodeUrl}
+                            alt="Payment QR Code"
                             className="w-48 h-48 object-contain"
                             data-testid="img-qr-code"
                           />
