@@ -100,7 +100,7 @@ export default function StudentLogin() {
                 {isLoading ? "Loading..." : "Login / लॉगिन करें"}
               </Button>
             </form>
-            <div className="mt-6 text-center space-y-2">
+            <div className="mt-6 text-center space-y-3">
               <p className="text-sm text-muted-foreground">
                 अभी तक रजिस्टर नहीं हुए?
               </p>
@@ -109,6 +109,16 @@ export default function StudentLogin() {
                   New Registration / नया रजिस्ट्रेशन
                 </Button>
               </Link>
+              <Link to="/student/forgot-password">
+                <Button variant="ghost" className="w-full text-xs">
+                  Forgot Password? / पासवर्ड भूल गए?
+                </Button>
+              </Link>
+              <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 p-2 rounded-lg">
+                <p className="text-xs text-blue-700 dark:text-blue-200">
+                  📋 नए Registration के बाद Admin की approval के लिए 24-48 घंटे का इंतज़ार करें
+                </p>
+              </div>
             </div>
           </CardContent>
         </Card>
