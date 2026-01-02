@@ -87,10 +87,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const login = async (email: string, password: string, type: "admin" | "student" = "student"): Promise<{ success: boolean; error?: string }> => {
+  const login = async (email: string, password: string, type: "admin" | "student" | "member" = "student"): Promise<{ success: boolean; error?: string }> => {
     setIsLoading(true);
     try {
-      const endpoint = type === "admin" ? "/api/auth/admin/login" : "/api/auth/student/login";
+      const endpoints: Record<string, string> = {
+        admin: "/api/auth/admin/login",
+        student: "/api/auth/student/login",
+        member: "/api/auth/member/login",
+      };
+      const endpoint = endpoints[type] || endpoints.student;
       const res = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -98,7 +103,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
 
       const data = await res.json();
-      
+
       if (!res.ok) {
         setIsLoading(false);
         return { success: false, error: data.error || "Login failed" };
