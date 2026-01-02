@@ -87,23 +87,6 @@ export default function StudentRegistration() {
   const hasUPI = feeConfig?.upiId;
   const hasBank = feeConfig?.bankName;
 
-  const [formData, setFormData] = useState({
-    studentName: "",
-    fatherName: "",
-    motherName: "",
-    email: "",
-    password: "",
-    class: "",
-    phone: "",
-    address: "",
-    village: "",
-    city: "",
-    dateOfBirth: "",
-    gender: "",
-    feeLevel: "village",
-    transactionId: "",
-  });
-
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
