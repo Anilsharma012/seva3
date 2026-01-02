@@ -631,3 +631,5 @@ export const PaymentTransaction = mongoose.model<IPaymentTransaction>('PaymentTr
 export const TeamMember = mongoose.model<ITeamMember>('TeamMember', TeamMemberSchema);
 export const Service = mongoose.model<IService>('Service', ServiceSchema);
 export const GalleryImage = mongoose.model<IGalleryImage>('GalleryImage', GalleryImageSchema);
+export const PasswordResetToken = mongoose.model<IPasswordResetToken>('PasswordResetToken', PasswordResetTokenSchema);
+export const Member = mongoose.model<IMember>('Member', MemberSchema);
