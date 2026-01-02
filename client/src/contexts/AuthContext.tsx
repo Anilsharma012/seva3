@@ -166,6 +166,48 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   };
 
+  const forgotPassword = async (email: string, type: "student" | "member"): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const endpoint = type === "student" ? "/api/auth/student/forgot-password" : "/api/auth/member/forgot-password";
+      const res = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        return { success: false, error: data.error || "Failed to send reset email" };
+      }
+
+      return { success: true };
+    } catch (error) {
+      return { success: false, error: "Network error" };
+    }
+  };
+
+  const resetPassword = async (token: string, newPassword: string, type: "student" | "member"): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const endpoint = type === "student" ? "/api/auth/student/reset-password" : "/api/auth/member/reset-password";
+      const res = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token, newPassword }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        return { success: false, error: data.error || "Failed to reset password" };
+      }
+
+      return { success: true };
+    } catch (error) {
+      return { success: false, error: "Network error" };
+    }
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -175,8 +217,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         login,
         signup,
         logout,
+        forgotPassword,
+        resetPassword,
         isAdmin: user?.role === "admin",
-        isStudent: user?.role === "student"
+        isStudent: user?.role === "student",
+        isMember: user?.role === "member"
       }}
     >
       {children}
